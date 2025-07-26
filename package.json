@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@splinetool/react-spline": "^4.1.0",
+    "react-icons": "^5.5.0"
+  }
+}
