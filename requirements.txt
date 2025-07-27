@@ -4,3 +4,8 @@ pandas
 numpy
 transformers
 kagglehub 
+xarray
+netcdf4
+h5netcdf
+xarray[io]
+scikit-learn
