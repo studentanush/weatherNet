@@ -1,4 +1,3 @@
-### weather-net
 | ID                             | Name                                                         | Notes                              |
 | ------------------------------ | ------------------------------------------------------------ | ---------------------------------- |
 | **ALLSKY\_SFC\_SW\_DWN**       | All-Sky Surface Shortwave Downward Irradiance                | Global horizontal irradiance (GHI) |
@@ -13,7 +12,6 @@
 | **RH2M**                       | Relative Humidity at 2 m                                     | Moisture content                   |
 | **QV2M**                       | Specific Humidity at 2 m                                     | Absolute moisture                  |
 | **PW**                         | Total Column Precipitable Water                              | Bulk atmospheric moisture          |
-| **PS**                         | Surface Pressure                                             | Barometric pressure                |
 | **WS2M**, **WS10M**, **WS50M** | Wind Speed at 2 m, 10 m, 50 m                                | Panel cooling effect               |
 | **CLOUD\_AMT**                 | Cloud Amount                                                 | Cloud-cover fraction               |
 | **ALLSKY\_SFC\_LW\_DWN**       | All-Sky Surface Longwave Downward Irradiance                 | Thermal IR back-radiation          |
