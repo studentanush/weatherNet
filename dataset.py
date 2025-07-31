@@ -9,8 +9,8 @@ class SolarLSTMDataset(Dataset):
         self.seq_len = seq_len
         df = df.replace(-999.0, -1)
         df = df.replace(-990.00,-1)
-        if 'datetime' not in df.columns:
-            df['datetime'] = pd.to_datetime(df['datetime'])
+
+        df['datetime'] = pd.to_datetime(df['datetime'])
 
         # time speration
         df['hour'] = df['datetime'].dt.hour
