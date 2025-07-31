@@ -10,10 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@splinetool/react-spline": "^4.1.0",
     "@splinetool/viewer": "^1.10.37",
     "@tailwindcss/vite": "^4.1.11",
     "framer-motion": "^12.23.9",
     "gsap": "^3.13.0",
+    "lottie-react": "^2.4.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-icons": "^5.5.0",
