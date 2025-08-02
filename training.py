@@ -73,7 +73,7 @@ def main():
     input_size = dataset.X.shape[2]
     model = SolarLSTM(input_size=input_size)
 
-    model, loss_history = train_model(model, train_loader, val_loader, epochs=100, lr=0.01)
+    model, loss_history = train_model(model, train_loader, val_loader, epochs=550, lr=0.01)
 
     os.makedirs("models", exist_ok=True)
     torch.save(model.state_dict(), "models/version2.pth")
