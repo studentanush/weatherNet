@@ -23,7 +23,7 @@ def evaluate_model(model, val_loader, criterion, device='cuda'):
 
 def train_model(model, train_loader, val_loader, epochs=20, lr=0.001, device='cuda'):
     model.to(device)
-    criterion = nn.MSELoss()
+    criterion = nn.SmoothL1Loss()  # Suitable for sparse target values
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     loss_history = {}
 
