@@ -41,7 +41,7 @@ def parse_data(json_data, parameter):
 
 # --- Save DataFrame to CSV ---
 def save_to_csv(df, parameter, location_name):
-    filename = f"{location_name.lower()}_{parameter}_hourly.csv"
+    filename = f"dataset/{location_name.lower()}_{parameter}_hourly.csv"
     df.to_csv(filename, index=False)
     print(f"✅ Saved: {filename}")
 

@@ -7,21 +7,23 @@ from sklearn.preprocessing import StandardScaler
 class SolarLSTMDataset(Dataset):
     def __init__(self, df, seq_len=24):
         self.seq_len = seq_len
-        df = df.replace(-999.0, -1)
-        df = df.replace(-990.00,-1)
+        df = df.replace(-999.0, np.nan).dropna()
 
-        df['datetime'] = pd.to_datetime(df['datetime'])
+        # Parse datetime if not already
+        if 'datetime' not in df.columns:
+            df['datetime'] = pd.to_datetime(df['DATE_TIME'])  # or set index as datetime
 
-        # time speration
+        # Add time-based cyclic features
         df['hour'] = df['datetime'].dt.hour
         df['month'] = df['datetime'].dt.month
-        # sine encoding fot the hours and time to train the model
+
         df['hour_sin'] = np.sin(2 * np.pi * df['hour'] / 24)
         df['hour_cos'] = np.cos(2 * np.pi * df['hour'] / 24)
-        # similar months encoding 
+
         df['month_sin'] = np.sin(2 * np.pi * df['month'] / 12)
         df['month_cos'] = np.cos(2 * np.pi * df['month'] / 12)
 
+        # Features (excluding ALLSKY_SRF_ALB as discussed)
         self.feature_cols = [
             "ALLSKY_SFC_SW_DIFF", "ALLSKY_SFC_SW_DNI", "TOA_SW_DWN",
             "RH2M", "QV2M", "PS", "WS2M", "CLOUD_AMT",
@@ -30,7 +32,7 @@ class SolarLSTMDataset(Dataset):
         ]
         self.target_col = "ALLSKY_SFC_SW_DWN"
 
-        # normalization of the data set
+        # Normalize features
         self.scaler = StandardScaler()
         features = self.scaler.fit_transform(df[self.feature_cols].values)
         target = df[self.target_col].values
