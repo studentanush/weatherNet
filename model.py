@@ -1,21 +1,23 @@
+import torch
 import torch.nn as nn
 
-class SolarLSTM(nn.Module):
-    def __init__(self, input_size, hidden_size=64, num_layers=2, fc_hidden=64, dropout=0.3):
-        super().__init__()
-        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
-
-        self.fc_layers = nn.Sequential(
-            nn.Linear(hidden_size, fc_hidden),
+class TimeSeriesTransformer(nn.Module):
+    def __init__(self, input_size, d_model=128, nhead=4, num_layers=2, dropout=0.1):
+        super(TimeSeriesTransformer, self).__init__()
+        
+        self.input_proj = nn.Linear(input_size, d_model)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dropout=dropout, batch_first=True)
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        
+        self.fc = nn.Sequential(
+            nn.Linear(d_model, d_model // 2),
             nn.GELU(),
             nn.Dropout(dropout),
-            nn.Linear(fc_hidden, fc_hidden // 2),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(fc_hidden // 2, 1)
+            nn.Linear(d_model // 2, 1)
         )
-
-    def forward(self, x):
-        out, _ = self.lstm(x)  # [batch, seq_len, hidden]
-        out = out[:, -1, :]    
-        return self.fc_layers(out)
+    
+    def forward(self, x):  # x: [batch, seq_len, input_size]
+        x = self.input_proj(x)  # [batch, seq_len, d_model]
+        x = self.transformer(x)  # [batch, seq_len, d_model]
+        x = x[:, -1, :]          # use last time step
+        return self.fc(x)

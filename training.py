@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 
-from model import SolarLSTM
+from model import TimeSeriesTransformer
 from dataset import SolarLSTMDataset
 
 
@@ -71,9 +71,11 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=64)
 
     input_size = dataset.X.shape[2]
-    model = SolarLSTM(input_size=input_size)
+    model = TimeSeriesTransformer(input_size=input_size)
 
-    model, loss_history = train_model(model, train_loader, val_loader, epochs=550, lr=0.01)
+    model.load_state_dict(torch.load("models/version2.pth"))
+
+    model, loss_history = train_model(model, train_loader, val_loader, epochs=50, lr=0.001)
 
     os.makedirs("models", exist_ok=True)
     torch.save(model.state_dict(), "models/version2.pth")
