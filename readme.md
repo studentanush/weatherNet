@@ -20,8 +20,24 @@ This project builds a deep learning model to forecast hourly solar energy output
 * Output: Next hour solar energy prediction (in W/m²)
 
 ---
+## 📷 Images
+* Actual Vs Predicted
+  <img title="a title" alt="Alt text" src="images\actualVsPredicted.png">
+* Average Hourly Solar Prediction
+  <img title="a title" alt="Alt text" src="images\average_hourly_solar_energy_data.png">
+* Train Curve
+<img title="a title" alt="Alt text" src="images\output.png">
 
+---
+## 🚇Metric
+
+* RMSE Error = 24.0718
+
+* MSE Error  = 15.7112
+---
 ## 📁 Project Structure
+
+
 
 ```
 .
