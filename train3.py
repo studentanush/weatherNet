@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 
-from model_3 import LSTMAttentionModel
+from model_3 import LSTMAttentionModelDeep
 from dataset import SolarLSTMDataset
 
 
@@ -71,7 +71,7 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=64)
 
     input_size = dataset.X.shape[2]
-    model = LSTMAttentionModel(input_size=input_size)
+    model = LSTMAttentionModelDeep(input_size=input_size)
 
     model.load_state_dict(torch.load("models/version4.pth"))
 
