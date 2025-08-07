@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 
-from model_2 import TimeSeriesTransformerV2
+from model_3 import LSTMAttentionModel
 from dataset import SolarLSTMDataset
 
 
@@ -71,14 +71,14 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=64)
 
     input_size = dataset.X.shape[2]
-    model = TimeSeriesTransformerV2(input_size=input_size)
+    model = LSTMAttentionModel(input_size=input_size)
 
-    model.load_state_dict(torch.load("models/version3.pth"))
+    model.load_state_dict(torch.load("models/version4.pth"))
 
-    model, loss_history = train_model(model, train_loader, val_loader, epochs=100, lr=0.001)
+    model, loss_history = train_model(model, train_loader, val_loader, epochs=20, lr=0.001)
 
     os.makedirs("models", exist_ok=True)
-    torch.save(model.state_dict(), "models/version3.pth")
+    torch.save(model.state_dict(), "models/version4.pth")
 
     plot_loss(loss_history, save_path="loss_plot.png")
 
