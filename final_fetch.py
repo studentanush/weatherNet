@@ -47,7 +47,6 @@ def fetch_weatherbit_data(lat, lon, key):
 
     df = add_time_features(df)
     df = compute_additional_features(df)
-    df = rename_for_model(df)
     print(df.columns)
     return df
 
@@ -78,9 +77,36 @@ def compute_additional_features(df):
 
     return df
 
-def rename_for_model(df):
-    return df[FEATURES]
+def evaluation_fetch(lat, lon, key):
+    now = datetime.now()
+    today_midnight = datetime(now.year, now.month, now.day)
+    yesterday_midnight = today_midnight - timedelta(days=3)
+    print(yesterday_midnight)
+    print(today_midnight)
+    params = {
+        "lat": lat,
+        "lon": lon,
+        "key": key,
+        "start_date": yesterday_midnight
+        .strftime("%Y-%m-%d:%H"),
+        "end_date": today_midnight.strftime("%Y-%m-%d:%H")
+    }
 
-# === MAIN ===
+    r = requests.get(API_URL, params=params)
+    print(r.url)
+    r.raise_for_status()
+    data = r.json()['data']
+
+    df = pd.DataFrame(data)
+    df['timestamp_utc'] = pd.to_datetime(df['timestamp_utc'], utc=True)
+    df.set_index('timestamp_utc', inplace=True)
+
+    df = add_time_features(df)
+    df = compute_additional_features(df)
+    print(df.columns)
+    return df
+
+
+
 if __name__ == "__main__":
     fetch_weatherbit_data(LAT, LON, API_KEY)

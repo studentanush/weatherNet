@@ -73,12 +73,12 @@ def main():
     input_size = dataset.X.shape[2]
     model = TimeSeriesTransformer(input_size=input_size)
 
-    model.load_state_dict(torch.load("models/version2.pth"))
+    model.load_state_dict(torch.load("models/version3.pth"))
 
-    model, loss_history = train_model(model, train_loader, val_loader, epochs=50, lr=0.001)
+    model, loss_history = train_model(model, train_loader, val_loader, epochs=100, lr=0.001)
 
     os.makedirs("models", exist_ok=True)
-    torch.save(model.state_dict(), "models/version2.pth")
+    torch.save(model.state_dict(), "models/version3.pth")
 
     plot_loss(loss_history, save_path="loss_plot.png")
 
