@@ -26,6 +26,7 @@ def build_url(parameter, latitude, longitude, start_date, end_date):
 def fetch_data(parameter, latitude, longitude, days_ago=4):
     start_date, end_date = get_past_24hr_range(days_ago)
     url = build_url(parameter, latitude, longitude, start_date, end_date)
+    print(url)
     response = requests.get(url)
     if response.status_code != 200:
         raise Exception(f"❌ Failed to fetch data: {response.status_code} - {response.text}")

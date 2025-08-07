@@ -3,7 +3,7 @@ import * as Cesium from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 
 // 🔑 Set your Cesium Ion Access Token here:
-Cesium.Ion.defaultAccessToken = ''; // Replace this with your real token
+Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJkYmIzZDA4ZC0yMmEwLTRhZDctYWUxYS0zZmVkMWYyMTk5YzYiLCJpZCI6MzI3OTkwLCJpYXQiOjE3NTQxMTk0Nzd9.mmkHXCMtof_DAszp5skz6S2Ak3NPm2v_ORF8BNwCP60'; // Replace this with your real token
 
 const Globe = ({ flyToCoordinates }) => {
   const cesiumContainerRef = useRef(null);

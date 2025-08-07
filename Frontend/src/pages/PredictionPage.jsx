@@ -10,47 +10,57 @@ const PredictionPage = () => {
   const [latitude, setLatitude] = useState('');
   const [flyToLocation, setFlyToLocation] = useState(null);
   const [weatherData, setWeatherData] = useState(null);
+  const [progressMessages, setProgressMessages] = useState([]);
+  const [prediction, setPrediction] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
 
-  const handleGetWeather = async () => {
-    setErrorMessage('');
-    setIsLoading(true);
+const handleGetWeather = async () => {
+  setErrorMessage('');
+  setIsLoading(true);
+  setProgressMessages([]);
+  setPrediction(null);
 
-    const parsedLongitude = parseFloat(longitude);
-    const parsedLatitude = parseFloat(latitude);
+  const parsedLongitude = parseFloat(longitude);
+  const parsedLatitude = parseFloat(latitude);
 
-    if (isNaN(parsedLongitude) || parsedLongitude < -180 || parsedLongitude > 180) {
-      setErrorMessage('Please enter a valid longitude between -180 and 180.');
-      setIsLoading(false);
-      return;
+  if (isNaN(parsedLongitude) || parsedLongitude < -180 || parsedLongitude > 180) {
+    setErrorMessage('Please enter a valid longitude between -180 and 180.');
+    setIsLoading(false);
+    return;
+  }
+  if (isNaN(parsedLatitude) || parsedLatitude < -90 || parsedLatitude > 90) {
+    setErrorMessage('Please enter a valid latitude between -90 and 90.');
+    setIsLoading(false);
+    return;
+  }
+
+  setProgressMessages(['Fetching real-time weather data...']);
+
+  try {
+    const response = await fetch(
+      `http://127.0.0.1:8000/predict?lat=${parsedLatitude}&lon=${parsedLongitude}`
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch prediction');
     }
 
-    if (isNaN(parsedLatitude) || parsedLatitude < -90 || parsedLatitude > 90) {
-      setErrorMessage('Please enter a valid latitude between -90 and 90.');
-      setIsLoading(false);
-      return;
-    }
+    const data = await response.json();
 
-    try {
-      const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${parsedLatitude}&longitude=${parsedLongitude}&hourly=temperature_2m,direct_radiation,cloudcover&current_weather=true`;
-      const response = await fetch(apiUrl);
-      if (!response.ok) throw new Error('Failed to fetch weather data.');
-
-      const data = await response.json();
-      navigate('/result', {
-        state: {
-          weatherData: data,
-          location: { lat: parsedLatitude, lon: parsedLongitude },
-        },
-      });
-    } catch (error) {
-      setErrorMessage(error.message);
-    } finally {
-      setIsLoading(false);
+    if (data.error) {
+      setErrorMessage(data.error);
+    } else {
+      setPrediction(`Prediction for [${parsedLatitude}, ${parsedLongitude}]: ${data.prediction_wm2} W/m²`);
     }
-  };
+  } catch (error) {
+    setErrorMessage(error.message || 'Something went wrong.');
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const handleFlyTo = () => {
     setErrorMessage('');
@@ -150,19 +160,16 @@ const PredictionPage = () => {
             <button onClick={handleFlyTo}>Fly to Globe</button>
           </div>
 
-          {weatherData && weatherData.current_weather && (
-            <div className="weather-box">
-              <h3>Current Weather</h3>
-              <h1>{weatherData.current_weather.temperature}°C</h1>
-              <p>Wind Speed: {weatherData.current_weather.windspeed} km/h</p>
-              <p>Wind Direction: {weatherData.current_weather.winddirection}°</p>
-              <p>Time: {weatherData.current_weather.time}</p>
-
-              <div className="weather-grid">
-                <div><strong>Cloud Cover:</strong> {weatherData.hourly.cloudcover[0]}%</div>
-                <div><strong>Direct Radiation:</strong> {weatherData.hourly.direct_radiation[0]} W/m²</div>
-                <div><strong>Temperature (Hourly):</strong> {weatherData.hourly.temperature_2m[0]}°C</div>
-              </div>
+          {progressMessages.length > 0 && (
+            <div className="progress-box">
+              {progressMessages.map((msg, idx) => (
+                <div key={idx}>{msg}</div>
+              ))}
+            </div>
+          )}
+          {prediction && (
+            <div className="prediction-box">
+              <strong>{prediction}</strong>
             </div>
           )}
         </div>
@@ -267,20 +274,24 @@ const PredictionPage = () => {
           margin-bottom: 1rem;
         }
 
-        .weather-box {
-          background-color: #f1f5f9;
-          padding: 1.5rem;
-          border-radius: 1rem;
-          margin-top: 2rem;
-          text-align: center;
-        }
-
-        .weather-grid {
+        .progress-box {
+          background: #f3f3f3;
+          padding: 1rem;
+          border-radius: 0.5rem;
           margin-top: 1rem;
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 0.5rem;
-          font-size: 0.9rem;
+          font-size: 1rem;
+          color: #333;
+          max-height: 200px;
+          overflow-y: auto;
+        }
+        .prediction-box {
+          background: #e0ffe0;
+          padding: 1rem;
+          border-radius: 0.5rem;
+          margin-top: 1rem;
+          font-size: 1.2rem;
+          color: #2563eb;
+          text-align: center;
         }
       `}</style>
     </div>
