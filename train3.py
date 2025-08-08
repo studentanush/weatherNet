@@ -9,6 +9,17 @@ from model_3 import LSTMAttentionModelDeep
 from dataset import SolarLSTMDataset
 
 
+# ---------------- Loss Function ---------------- #
+class QuantileLoss(nn.Module):
+    def __init__(self, q=0.9):
+        super().__init__()
+        self.q = q
+    def forward(self, preds, target):
+        errors = target - preds
+        return torch.mean(torch.max(self.q * errors, (self.q - 1) * errors))
+
+
+# ---------------- Evaluation ---------------- #
 def evaluate_model(model, val_loader, criterion, device='cuda'):
     model.eval()
     val_loss = 0.0
@@ -21,9 +32,10 @@ def evaluate_model(model, val_loader, criterion, device='cuda'):
     return val_loss / len(val_loader.dataset)
 
 
+# ---------------- Training ---------------- #
 def train_model(model, train_loader, val_loader, epochs=20, lr=0.001, device='cuda'):
     model.to(device)
-    criterion = nn.SmoothL1Loss()  # Suitable for sparse target values
+    criterion = QuantileLoss(q=0.9)  # Focus on high peaks
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     loss_history = {}
 
@@ -47,6 +59,7 @@ def train_model(model, train_loader, val_loader, epochs=20, lr=0.001, device='cu
     return model, loss_history
 
 
+# ---------------- Plotting ---------------- #
 def plot_loss(history, save_path=None):
     plt.plot(list(history.keys()), list(history.values()))
     plt.xlabel("Epoch")
@@ -57,12 +70,13 @@ def plot_loss(history, save_path=None):
     plt.show()
 
 
+# ---------------- Main ---------------- #
 def main():
     df = pd.read_csv("dataset/final.csv")
     df['datetime'] = pd.to_datetime(df['datetime'])
 
-    dataset = SolarLSTMDataset(df, seq_len=24)
-
+    dataset = SolarLSTMDataset(df, seq_len=6)
+    print(dataset.__len__())
     train_size = int(0.8 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
@@ -73,12 +87,12 @@ def main():
     input_size = dataset.X.shape[2]
     model = LSTMAttentionModelDeep(input_size=input_size)
 
-    model.load_state_dict(torch.load("models/version4.pth"))
+    model.load_state_dict(torch.load("models/version6_q09.pth"))
 
     model, loss_history = train_model(model, train_loader, val_loader, epochs=20, lr=0.001)
 
     os.makedirs("models", exist_ok=True)
-    torch.save(model.state_dict(), "models/version4.pth")
+    torch.save(model.state_dict(), "models/version6_q09.pth")
 
     plot_loss(loss_history, save_path="loss_plot.png")
 

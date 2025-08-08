@@ -8,7 +8,6 @@ class SolarLSTMDataset(Dataset):
     def __init__(self, df, seq_len=24):
         self.seq_len = seq_len
         df = df.replace(-999.0, np.nan).dropna()
-
         # Parse datetime if not already
         if 'datetime' not in df.columns:
             df['datetime'] = pd.to_datetime(df['DATE_TIME'])  # or set index as datetime
