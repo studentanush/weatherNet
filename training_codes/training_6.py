@@ -99,6 +99,58 @@ def train_model():
     return history
 
 # ---------------- EVALUATION ON TEST SET ----------------
+
+def add_time_features(df):
+    df = df.copy()
+    df["hour"] = df["datetime"].dt.hour
+    df["month"] = df["datetime"].dt.month
+    df["hour_sin"] = np.sin(2 * np.pi * df["hour"] / 24)
+    df["hour_cos"] = np.cos(2 * np.pi * df["hour"] / 24)
+    df["month_sin"] = np.sin(2 * np.pi * df["month"] / 12)
+    df["month_cos"] = np.cos(2 * np.pi * df["month"] / 12)
+    return df
+
+def evaluate_and_plot_on_val():
+    scaler = joblib.load(SCALER_SAVE_PATH)
+    model.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
+    model.eval()
+
+    val_indices = val_dataset.indices
+    df_val = df.iloc[val_indices].reset_index(drop=True)
+
+    # Add cyclic features like in training
+    df_val = add_time_features(df_val)
+
+    actual = df_val["ALLSKY_SFC_SW_DWN"].values.copy()
+    df_val["ALLSKY_SFC_SW_DWN"] = np.log1p(df_val["ALLSKY_SFC_SW_DWN"].clip(lower=0))
+
+    predicted = []
+    for i in range(12000, 13000):
+        input_df = df_val.iloc[i - SEQ_LEN:i]
+        input_features = input_df[FEATURES]
+        input_scaled = scaler.transform(input_features)
+
+        if input_scaled.shape[0] == SEQ_LEN:
+            input_tensor = torch.tensor(input_scaled, dtype=torch.float32).unsqueeze(0).to(DEVICE)
+            with torch.no_grad():
+                pred_log = model(input_tensor).item()
+            pred_original = np.expm1(pred_log)
+            predicted.append(pred_original)
+
+    actual_aligned = actual[SEQ_LEN + 1 : SEQ_LEN + 1 + len(predicted)]
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(actual_aligned, label="Actual Solar Radiation")
+    plt.plot(predicted, label="Predicted Solar Radiation")
+    plt.xlabel("Validation Time Step")
+    plt.ylabel("Solar Radiation")
+    plt.title(f"Validation Accuracy (SEQ_LEN={SEQ_LEN}, q={Q_VAL})")
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(f"models/val_eval_seq{SEQ_LEN}.png", dpi=300)
+    plt.show()
+    print(f"✅ Validation plot saved as models/val_eval_seq{SEQ_LEN}.png")
+
 def evaluate_and_plot():
     scaler = joblib.load(SCALER_SAVE_PATH)
     model.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
