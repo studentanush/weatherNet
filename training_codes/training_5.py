@@ -1,108 +1,126 @@
 import os
-import sys
 import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, random_split, WeightedRandomSampler
 import pandas as pd
-from torch.utils.data import DataLoader, random_split, Subset
-import numpy as np
+import matplotlib.pyplot as plt
 
-# --- Add repo root to path ---
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from final.dataset import SolarLSTMDataset
-from models_code.model_5 import SpikeAwareHybrid
+from models_code.model_5 import SpikeAwareHybrid  # adjust name if different
 
-# ----------------------
-# Weighted Quantile Loss
-# ----------------------
-class WeightedQuantileLoss(torch.nn.Module):
-    def __init__(self, q=0.9):
+# ---------------- Loss Function ---------------- #
+class WeightedQuantileLoss(nn.Module):
+    def __init__(self, q=0.9, high_weight=5.0, threshold=500):
         super().__init__()
         self.q = q
+        self.high_weight = high_weight
+        self.threshold = threshold
+
     def forward(self, preds, target):
         errors = target - preds
-        weights = 1.0 + (target / target.max()) * 4.0  # weight peaks up to 5x more
-        loss = torch.max(self.q * errors, (self.q - 1) * errors) * weights
-        return torch.mean(loss)
+        base_loss = torch.max(self.q * errors, (self.q - 1) * errors)
 
-# ----------------------
-# Oversample High Peaks
-# ----------------------
-def oversample_high_peaks(dataset, threshold):
-    high_idxs = [i for i in range(len(dataset)) if dataset.y[i] > threshold]
-    return high_idxs
+        # Weight high peaks more
+        weights = torch.ones_like(target)
+        weights[target > self.threshold] = self.high_weight
 
-# ----------------------
-# Evaluation
-# ----------------------
-def evaluate(model, loader, criterion, device):
+        return torch.mean(weights * base_loss)
+
+
+# ---------------- Evaluation ---------------- #
+def evaluate_model(model, val_loader, criterion, device):
     model.eval()
-    total_loss = 0
+    val_loss = 0.0
     with torch.no_grad():
-        for X, y in loader:
+        for X, y in val_loader:
             X, y = X.to(device), y.to(device)
             preds = model(X)
-            total_loss += criterion(preds, y).item() * X.size(0)
-    return total_loss / len(loader.dataset)
+            loss = criterion(preds, y)
+            val_loss += loss.item() * X.size(0)
+    return val_loss / len(val_loader.dataset)
 
-# ----------------------
-# Train Loop
-# ----------------------
+
+# ---------------- Training ---------------- #
 def train(model, train_loader, val_loader, epochs, lr, device, save_path):
-    criterion = WeightedQuantileLoss(q=0.9)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=5)
+    model.to(device)
+    criterion = WeightedQuantileLoss(q=0.9, high_weight=5.0, threshold=500)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    best_val_loss = float("inf")
+    history = {"train": [], "val": []}
 
-    best_val = float('inf')
     for epoch in range(epochs):
         model.train()
-        train_loss = 0
+        train_loss = 0.0
+
         for X, y in train_loader:
             X, y = X.to(device), y.to(device)
             optimizer.zero_grad()
             preds = model(X)
             loss = criterion(preds, y)
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optimizer.step()
             train_loss += loss.item() * X.size(0)
 
         train_loss /= len(train_loader.dataset)
-        val_loss = evaluate(model, val_loader, criterion, device)
-        scheduler.step(val_loss)
+        val_loss = evaluate_model(model, val_loader, criterion, device)
 
-        print(f"Epoch {epoch+1}/{epochs} | Train: {train_loss:.4f} | Val: {val_loss:.4f}")
+        history["train"].append(train_loss)
+        history["val"].append(val_loss)
 
-        if val_loss < best_val:
-            best_val = val_loss
+        print(f"Epoch {epoch+1}/{epochs} - Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
+
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
             torch.save(model.state_dict(), save_path)
+            print(f"✅ Saved new best model to {save_path}")
 
-# ----------------------
-# Main
-# ----------------------
+    return history
+
+
+# ---------------- Plot Loss ---------------- #
+def plot_loss(history):
+    plt.figure(figsize=(8,5))
+    plt.plot(history["train"], label="Train Loss")
+    plt.plot(history["val"], label="Val Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+
+# ---------------- Main ---------------- #
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Load and prepare dataset
-    df = pd.read_csv("/content/final.csv")  # change path if needed
+    # Load dataset
+    df = pd.read_csv("/content/weatherNet/dataset/final.csv")  # adjust path if needed
+    df['datetime'] = pd.to_datetime(df['datetime'])
+
     dataset = SolarLSTMDataset(df, seq_len=24)
 
-    # Oversample high peaks
-    high_peak_idxs = oversample_high_peaks(dataset, threshold=500)
-    print(f"High peak samples: {len(high_peak_idxs)}")
-    oversampled_idxs = list(range(len(dataset))) + high_peak_idxs * 3  # 3x more peaks
+    # Split dataset first
+    train_size = int(0.8 * len(dataset))
+    val_size = len(dataset) - train_size
+    train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
-    train_size = int(0.8 * len(oversampled_idxs))
-    train_idxs = oversampled_idxs[:train_size]
-    val_idxs = oversampled_idxs[train_size:]
+    # Create oversampling weights only for train set
+    train_targets = [train_dataset[i][1].item() for i in range(len(train_dataset))]
+    train_weights = [5.0 if t > 500 else 1.0 for t in train_targets]
+    sampler = WeightedRandomSampler(train_weights, num_samples=len(train_weights), replacement=True)
 
-    train_loader = DataLoader(Subset(dataset, train_idxs), batch_size=64, shuffle=True)
-    val_loader = DataLoader(Subset(dataset, val_idxs), batch_size=64)
+    # DataLoaders
+    train_loader = DataLoader(train_dataset, batch_size=64, sampler=sampler)
+    val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
 
-    # Init model
-    model = SpikeAwareHybrid(input_size=len(dataset.feature_cols))
+    # Model
+    model = SpikeAwareHybrid(input_size=len(dataset.feature_cols)).to(device)
 
     # Train
+    save_path = "models/best_spike_aware_1.pth"
     os.makedirs("models", exist_ok=True)
-    save_path = "models/best_spikeaware.pth"
-    train(model, train_loader, val_loader, epochs=50, lr=0.001, device=device, save_path=save_path)
 
-    print(f"✅ Training done, best model saved to {save_path}")
+    history = train(model, train_loader, val_loader, epochs=50, lr=0.001, device=device, save_path=save_path)
+
+    # Plot loss
+    plot_loss(history)
