@@ -1,57 +1,52 @@
-import os
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, random_split, WeightedRandomSampler
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from final.dataset import SolarLSTMDataset
-from models_code.model_5 import SpikeAwareHybrid  # adjust name if different
+from final.dataset_2 import SolarLSTMDataset  # updated dataset with log1p
+from models_code.model_5 import SpikeAwareHybrid  # your deep model
 
 # ---------------- Loss Function ---------------- #
-class WeightedQuantileLoss(nn.Module):
-    def __init__(self, q=0.9, high_weight=5.0, threshold=500):
+class QuantileLoss(nn.Module):
+    def __init__(self, q=0.95):
         super().__init__()
         self.q = q
-        self.high_weight = high_weight
-        self.threshold = threshold
-
     def forward(self, preds, target):
         errors = target - preds
-        base_loss = torch.max(self.q * errors, (self.q - 1) * errors)
-
-        # Weight high peaks more
-        weights = torch.ones_like(target)
-        weights[target > self.threshold] = self.high_weight
-
-        return torch.mean(weights * base_loss)
-
+        return torch.mean(torch.max(self.q * errors, (self.q - 1) * errors))
 
 # ---------------- Evaluation ---------------- #
-def evaluate_model(model, val_loader, criterion, device):
+def evaluate_model(model, val_loader, criterion, device='cuda'):
     model.eval()
     val_loss = 0.0
+    actual, predicted = [], []
     with torch.no_grad():
         for X, y in val_loader:
             X, y = X.to(device), y.to(device)
             preds = model(X)
             loss = criterion(preds, y)
             val_loss += loss.item() * X.size(0)
-    return val_loss / len(val_loader.dataset)
 
+            # inverse transform
+            actual.extend(SolarLSTMDataset.inverse_transform_target(y.cpu().numpy()))
+            predicted.extend(SolarLSTMDataset.inverse_transform_target(preds.cpu().numpy()))
+
+    return val_loss / len(val_loader.dataset), actual, predicted
 
 # ---------------- Training ---------------- #
-def train(model, train_loader, val_loader, epochs, lr, device, save_path):
+def train(model, train_loader, val_loader, epochs=20, lr=0.001, device='cuda', save_path=None):
     model.to(device)
-    criterion = WeightedQuantileLoss(q=0.9, high_weight=5.0, threshold=500)
+    criterion = QuantileLoss(q=0.95)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    best_val_loss = float("inf")
     history = {"train": [], "val": []}
 
     for epoch in range(epochs):
         model.train()
         train_loss = 0.0
-
         for X, y in train_loader:
             X, y = X.to(device), y.to(device)
             optimizer.zero_grad()
@@ -62,41 +57,20 @@ def train(model, train_loader, val_loader, epochs, lr, device, save_path):
             train_loss += loss.item() * X.size(0)
 
         train_loss /= len(train_loader.dataset)
-        val_loss = evaluate_model(model, val_loader, criterion, device)
+        val_loss, _, _ = evaluate_model(model, val_loader, criterion, device)
 
         history["train"].append(train_loss)
         history["val"].append(val_loss)
+        print(f"Epoch {epoch+1}: Train Loss = {train_loss:.4f}, Val Loss = {val_loss:.4f}")
 
-        print(f"Epoch {epoch+1}/{epochs} - Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
-
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
+        if save_path:
             torch.save(model.state_dict(), save_path)
-            print(f"✅ Saved new best model to {save_path}")
 
     return history
 
-
-# ---------------- Plot Loss ---------------- #
-def plot_loss(history):
-    plt.figure(figsize=(8,5))
-    plt.plot(history["train"], label="Train Loss")
-    plt.plot(history["val"], label="Val Loss")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-
 # ---------------- Main ---------------- #
 if __name__ == "__main__":
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Load dataset
-    df = pd.read_csv("/content/weatherNet/dataset/final.csv")  # adjust path if needed
-    df['datetime'] = pd.to_datetime(df['datetime'])
-
+    df = pd.read_csv("dataset/final.csv")
     dataset = SolarLSTMDataset(df, seq_len=24)
 
     # Split dataset first
@@ -104,23 +78,33 @@ if __name__ == "__main__":
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
-    # Create oversampling weights only for train set
+    # Weighted sampler for spikes
     train_targets = [train_dataset[i][1].item() for i in range(len(train_dataset))]
-    train_weights = [5.0 if t > 500 else 1.0 for t in train_targets]
+    train_weights = [5.0 if t > torch.log1p(torch.tensor(500.0)) else 1.0 for t in train_targets]
     sampler = WeightedRandomSampler(train_weights, num_samples=len(train_weights), replacement=True)
 
     # DataLoaders
     train_loader = DataLoader(train_dataset, batch_size=64, sampler=sampler)
     val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
 
-    # Model
-    model = SpikeAwareHybrid(input_size=len(dataset.feature_cols)).to(device)
-
-    # Train
-    save_path = "models/best_spike_aware_1.pth"
+    model = SpikeAwareHybrid(input_size=len(dataset.feature_cols))
     os.makedirs("models", exist_ok=True)
+    save_path = "models/spike_aware_q95.pth"
 
-    history = train(model, train_loader, val_loader, epochs=50, lr=0.001, device=device, save_path=save_path)
+    history = train(model, train_loader, val_loader, epochs=50, lr=0.001, device='cuda', save_path=save_path)
 
-    # Plot loss
-    plot_loss(history)
+    # Final evaluation + plot
+    _, actual, predicted = evaluate_model(model, val_loader, QuantileLoss(q=0.95), device='cuda')
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(actual, label="Actual Solar Radiation")
+    plt.plot(predicted, label="Predicted Solar Radiation")
+    plt.xlabel("Time Step")
+    plt.ylabel("Solar Radiation")
+    plt.title("Model Accuracy: Actual vs Predicted Solar Radiation")
+    plt.legend()
+
+    plot_path = "models/spike_eval.png"
+    plt.savefig(plot_path, dpi=300)
+    print(f"✅ Plot saved to {plot_path}")
+    plt.show()
