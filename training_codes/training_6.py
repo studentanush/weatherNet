@@ -14,7 +14,7 @@ from final.dataset_2 import SolarLSTMDataset
 from models_code.model_5 import SpikeAwareHybrid
 
 # ---------------- CONFIG ----------------
-SEQ_LEN = 12
+SEQ_LEN = 24
 BATCH_SIZE = 64
 EPOCHS = 10
 LR = 0.001
@@ -57,7 +57,10 @@ optimizer = optim.Adam(model.parameters(), lr=LR)
 def train_model():
     best_val_loss = float("inf")
     history = {"train_loss": [], "val_loss": []}
-
+    try:
+        model.load_state_dict(torch.load(MODEL_SAVE_PATH))
+    except:
+        print("can not load the model the model for training starting the training from scrach")
     for epoch in range(EPOCHS):
         model.train()
         running_loss = 0.0
@@ -164,7 +167,7 @@ def evaluate_and_plot():
     df_test["ALLSKY_SFC_SW_DWN"] = np.log1p(df_test["ALLSKY_SFC_SW_DWN"])
 
     predicted = []
-    for i in range(400,1600):
+    for i in range(1000,1100):
         input_df = df_test.iloc[i - SEQ_LEN:i]
         input_features = input_df[FEATURES]
         input_scaled = scaler.transform(input_features)
@@ -192,5 +195,5 @@ def evaluate_and_plot():
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
-    # train_model()
+    train_model()
     evaluate_and_plot()
