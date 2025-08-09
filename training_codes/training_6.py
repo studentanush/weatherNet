@@ -128,7 +128,7 @@ def evaluate_and_plot_on_val():
     df_val["ALLSKY_SFC_SW_DWN"] = np.log1p(df_val["ALLSKY_SFC_SW_DWN"].clip(lower=0))
 
     predicted = []
-    for i in range(12000, 13000):
+    for i in range(13000, 13100):
         input_df = df_val.iloc[i - SEQ_LEN:i]
         input_features = input_df[FEATURES]
         input_scaled = scaler.transform(input_features)
@@ -150,7 +150,7 @@ def evaluate_and_plot_on_val():
     plt.title(f"Validation Accuracy (SEQ_LEN={SEQ_LEN}, q={Q_VAL})")
     plt.legend()
     plt.grid(True)
-    plt.savefig(f"models/val_eval_seq{SEQ_LEN}.png", dpi=300)
+    plt.savefig(f"models/val_eval_seq_1{SEQ_LEN}.png", dpi=300)
     plt.show()
     print(f"✅ Validation plot saved as models/val_eval_seq{SEQ_LEN}.png")
 
@@ -167,7 +167,7 @@ def evaluate_and_plot():
     df_test["ALLSKY_SFC_SW_DWN"] = np.log1p(df_test["ALLSKY_SFC_SW_DWN"])
 
     predicted = []
-    for i in range(1000,1100):
+    for i in range(26,1000):
         input_df = df_test.iloc[i - SEQ_LEN:i]
         input_features = input_df[FEATURES]
         input_scaled = scaler.transform(input_features)
@@ -181,7 +181,7 @@ def evaluate_and_plot():
 
     actual_aligned = actual[SEQ_LEN + 1 : SEQ_LEN + 1 + len(predicted)]
 
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(86, 6))
     plt.plot(actual_aligned, label="Actual Solar Radiation")
     plt.plot(predicted, label="Predicted Solar Radiation")
     plt.xlabel("Time Step")
@@ -195,5 +195,5 @@ def evaluate_and_plot():
 
 # ---------------- RUN ----------------
 if __name__ == "__main__":
-    train_model()
+    # train_model()
     evaluate_and_plot()
