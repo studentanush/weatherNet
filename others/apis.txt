@@ -1,0 +1,20 @@
+| ID                             | Name                                                         | Notes                              |
+| ------------------------------ | ------------------------------------------------------------ | ---------------------------------- |
+| **ALLSKY\_SFC\_SW\_DWN**       | All-Sky Surface Shortwave Downward Irradiance                | Global horizontal irradiance (GHI) |
+| **ALLSKY\_SFC\_SW\_DIFF**      | All-Sky Surface Shortwave Diffuse Irradiance                 | Diffuse component                  |
+| **ALLSKY\_SFC\_SW\_DNI**       | All-Sky Surface Shortwave Direct Normal Irradiance           | DNI                                |
+| **SI\_TILTED\_AVG**            | Solar Irradiance for Equator-Facing Tilted Surface (Average) | POA irradiance on tilted plane     |
+| **TOA\_SW\_DWN**               | Top-Of-Atmosphere Shortwave Downward Irradiance              | Extraterrestrial irradiance        |
+| **AIRMASS\_HR**                | Air Mass (hourly)                                            | Atmospheric path length            |
+| **T2M**                        | Temperature at 2 Meters                                      | Ambient air temperature            |
+| **T2M\_MAX**, **T2M\_MIN**     | Daily max/min Temperature at 2 m                             | Temperature range                  |
+| **T2MDEW**                     | Dew/Frost Point at 2 m                                       | Proxy for humidity                 |
+| **RH2M**                       | Relative Humidity at 2 m                                     | Moisture content                   |
+| **QV2M**                       | Specific Humidity at 2 m                                     | Absolute moisture                  |
+| **PW**                         | Total Column Precipitable Water                              | Bulk atmospheric moisture          |
+| **WS2M**, **WS10M**, **WS50M** | Wind Speed at 2 m, 10 m, 50 m                                | Panel cooling effect               |
+| **CLOUD\_AMT**                 | Cloud Amount                                                 | Cloud-cover fraction               |
+| **ALLSKY\_SFC\_LW\_DWN**       | All-Sky Surface Longwave Downward Irradiance                 | Thermal IR back-radiation          |
+| **ALLSKY\_SRF\_ALB**           | All-Sky Surface Albedo                                       | Ground reflectance                 |
+| **SG\_SZA\_HR**                | Solar Zenith Angle (hourly)                                  | Solar elevation                    |
+| **SG\_SAA\_HR**                | Solar Azimuth Angle (hourly)                                 | Sun’s compass direction            |

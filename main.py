@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Query
 from pydantic import BaseModel
 from final_fetch import fetch_weatherbit_data
-from model import TimeSeriesTransformer
+from models_code.model import TimeSeriesTransformer
 from fastapi.middleware.cors import CORSMiddleware
 import joblib
 import torch
