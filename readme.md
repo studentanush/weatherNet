@@ -22,7 +22,7 @@ This project builds a deep learning model to forecast hourly solar energy output
 ---
 ## 📷 Images
 * Actual Vs Predicted
-  <img title="a title" alt="Alt text" src="images\WhatsApp Image 2025-08-09 at 21.12.36_66499ea0.jpg">
+  <img title="a title" alt="Alt text" src="models\test_eval_seq24.png">
 * Average Hourly Solar Prediction
   <img title="a title" alt="Alt text" src="images\average_hourly_solar_energy_data.png">
 * On Live data never seem before

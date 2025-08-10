@@ -15,7 +15,7 @@ from models_code.model_5 import SpikeAwareHybrid
 from final.final_fetch import compute_additional_features, add_time_features
 
 # ==== CONFIG ====
-MODEL_PATH = "models/spike_aware_q95_seq24.pth"
+MODEL_PATH = "models/spike_aware_q95_seq24.pth40"
 SCALER_PATH = "scalers/feature_scaler_seq24.pkl"
 SEQ_LEN = 24
 API_KEY = "777628119ce049d484833355dbeca175"

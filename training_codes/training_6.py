@@ -22,7 +22,7 @@ Q_VAL = 0.95
 
 DATA_PATH = "dataset/final.csv"
 TEST_PATH = "dataset/final.csv"
-MODEL_SAVE_PATH = f"models/spike_aware_q{int(Q_VAL*100)}_seq{SEQ_LEN}.pth"
+MODEL_SAVE_PATH = f"models/spike_aware_q{int(Q_VAL*100)}_seq{SEQ_LEN}.pth40"
 SCALER_SAVE_PATH = f"scalers/feature_scaler_seq{SEQ_LEN}.pkl"
 print(MODEL_SAVE_PATH)
 print(SCALER_SAVE_PATH)
@@ -168,7 +168,7 @@ def evaluate_and_plot():
     df_test["ALLSKY_SFC_SW_DWN"] = np.log1p(df_test["ALLSKY_SFC_SW_DWN"])
 
     predicted = []
-    for i in range(26,1000):
+    for i in range(25,130):
         input_df = df_test.iloc[i - SEQ_LEN:i]
         input_features = input_df[FEATURES]
         input_scaled = scaler.transform(input_features)
@@ -182,7 +182,7 @@ def evaluate_and_plot():
 
     actual_aligned = actual[SEQ_LEN + 1 : SEQ_LEN + 1 + len(predicted)]
 
-    plt.figure(figsize=(86, 6))
+    plt.figure(figsize=(12, 6))
     plt.plot(actual_aligned, label="Actual Solar Radiation")
     plt.plot(predicted, label="Predicted Solar Radiation")
     plt.xlabel("Time Step")

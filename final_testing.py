@@ -16,7 +16,7 @@ from models_code.model_5 import SpikeAwareHybrid
 from final.final_fetch import fetch_weatherbit_data
 
 # ==== CONFIG ====
-MODEL_PATH = "models/spike_aware_q95_seq24.pth"
+MODEL_PATH = "models/spike_aware_q95_seq24.pth40"
 SCALER_PATH = "scalers/feature_scaler_seq24.pkl"
 SEQ_LEN = 24
 API_KEY = "777628119ce049d484833355dbeca175"
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     lon = float(input("Enter longitude: "))
 
     print("📡 Fetching last 7 days weather data...")
-    end_time = datetime.now(tz=timezone.utc) - timedelta(hours=7)
+    end_time = datetime.now(tz=timezone.utc) 
     start_time = end_time - timedelta(days=7)
 
     # We modify fetch to handle date range (manually inlined)
