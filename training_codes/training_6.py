@@ -24,7 +24,8 @@ DATA_PATH = "dataset/final.csv"
 TEST_PATH = "dataset/final.csv"
 MODEL_SAVE_PATH = f"models/spike_aware_q{int(Q_VAL*100)}_seq{SEQ_LEN}.pth"
 SCALER_SAVE_PATH = f"scalers/feature_scaler_seq{SEQ_LEN}.pkl"
-
+print(MODEL_SAVE_PATH)
+print(SCALER_SAVE_PATH)
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 FEATURES = [

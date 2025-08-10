@@ -1,15 +1,18 @@
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import torch
 import numpy as np
 import pandas as pd
-from models_code.model import TimeSeriesTransformer
+from models_code.model_5 import SpikeAwareHybrid
 from sklearn.preprocessing import StandardScaler
 import joblib
 from fetch import fetch_and_return
 from datetime import datetime, timedelta
 
 
-MODEL_PATH = "models/version2.pth"
-SCALER_PATH = "scalers/feature_scaler.pkl"
+MODEL_PATH = "models/spike_aware_q95_seq24.pth"
+SCALER_PATH ="scalers/feature_scaler_seq24.pkl"
 SEQ_LEN = 24
 FEATURES = [
     "ALLSKY_SFC_SW_DIFF", "ALLSKY_SFC_SW_DNI", "TOA_SW_DWN",
@@ -123,7 +126,7 @@ def main():
     print(f"🔮 Prediction is for hour: {target_time}")
 
     scaler = joblib.load(SCALER_PATH)
-    model = TimeSeriesTransformer(input_size=len(FEATURES))
+    model = SpikeAwareHybrid(input_size=len(FEATURES))
     model.load_state_dict(torch.load(MODEL_PATH, map_location='cpu'))
     model.eval()
 
