@@ -25,7 +25,7 @@ def add_time_features(df):
     return df
 
 def fetch_weatherbit_data(lat, lon, key):
-    end_time = datetime.now(tz=timezone.utc)-timedelta(hours=7)
+    end_time = datetime.now(tz=timezone.utc)
     start_time = end_time - timedelta(hours=24)
 
     params = {
