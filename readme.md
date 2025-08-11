@@ -1,22 +1,142 @@
-### weather-net
-| ID                             | Name                                                         | Notes                              |
-| ------------------------------ | ------------------------------------------------------------ | ---------------------------------- |
-| **ALLSKY\_SFC\_SW\_DWN**       | All-Sky Surface Shortwave Downward Irradiance                | Global horizontal irradiance (GHI) |
-| **ALLSKY\_SFC\_SW\_DIFF**      | All-Sky Surface Shortwave Diffuse Irradiance                 | Diffuse component                  |
-| **ALLSKY\_SFC\_SW\_DNI**       | All-Sky Surface Shortwave Direct Normal Irradiance           | DNI                                |
-| **SI\_TILTED\_AVG**            | Solar Irradiance for Equator-Facing Tilted Surface (Average) | POA irradiance on tilted plane     |
-| **TOA\_SW\_DWN**               | Top-Of-Atmosphere Shortwave Downward Irradiance              | Extraterrestrial irradiance        |
-| **AIRMASS\_HR**                | Air Mass (hourly)                                            | Atmospheric path length            |
-| **T2M**                        | Temperature at 2 Meters                                      | Ambient air temperature            |
-| **T2M\_MAX**, **T2M\_MIN**     | Daily max/min Temperature at 2 m                             | Temperature range                  |
-| **T2MDEW**                     | Dew/Frost Point at 2 m                                       | Proxy for humidity                 |
-| **RH2M**                       | Relative Humidity at 2 m                                     | Moisture content                   |
-| **QV2M**                       | Specific Humidity at 2 m                                     | Absolute moisture                  |
-| **PW**                         | Total Column Precipitable Water                              | Bulk atmospheric moisture          |
-| **PS**                         | Surface Pressure                                             | Barometric pressure                |
-| **WS2M**, **WS10M**, **WS50M** | Wind Speed at 2 m, 10 m, 50 m                                | Panel cooling effect               |
-| **CLOUD\_AMT**                 | Cloud Amount                                                 | Cloud-cover fraction               |
-| **ALLSKY\_SFC\_LW\_DWN**       | All-Sky Surface Longwave Downward Irradiance                 | Thermal IR back-radiation          |
-| **ALLSKY\_SRF\_ALB**           | All-Sky Surface Albedo                                       | Ground reflectance                 |
-| **SG\_SZA\_HR**                | Solar Zenith Angle (hourly)                                  | Solar elevation                    |
-| **SG\_SAA\_HR**                | Solar Azimuth Angle (hourly)                                 | Sun’s compass direction            |
+# 🌞 Weather-Net(solar enery prediction)
+
+This project builds a deep learning model to forecast hourly solar energy output (W/m²) using weather features from NASA's POWER API. It includes a `FastAPI` server for making real-time predictions using geographic coordinates.
+
+---
+
+## 📦 Features
+
+* Predict next hour’s solar irradiance (ALLSKY\_SFC\_SW\_DWN)
+* Uses historical hourly weather data (past 24h)
+* FastAPI endpoint for real-time predictions
+* Model built using Transformer-based architecture (`TimeSeriesTransformer`)
+
+---
+
+## 🧠 Model Architecture
+
+* Input: 24 hourly sequences of 14 weather features
+* Model: Transformer encoder
+* Output: Next hour solar energy prediction (in W/m²)
+
+---
+## 📷 Images
+* Actual Vs Predicted
+  <img title="a title" alt="Alt text" src="images\actualVsPredicted.png">
+* Average Hourly Solar Prediction
+  <img title="a title" alt="Alt text" src="images\average_hourly_solar_energy_data.png">
+* Train Curve
+<img title="a title" alt="Alt text" src="images\output.png">
+
+---
+## 🚇Metric
+
+* RMSE Error = 24.0718
+
+* MSE Error  = 15.7112
+---
+## 📁 Project Structure
+
+
+
+```
+.
+├── app.py                # FastAPI app for live prediction
+├── model.py              # Transformer model class
+├── fetch.py              # Data fetcher using NASA POWER API
+├── scalers/
+│   └── feature_scaler.pkl  # Saved StandardScaler
+├── models/
+│   └── version2.pth        # Trained PyTorch model
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## 🚀 Running the API Server
+
+1. **Install dependencies**:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Start FastAPI server**:
+
+   ```bash
+   uvicorn app:app --reload
+   ```
+
+3. **Test API in browser**:
+   Open: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+
+---
+
+## 📥 API Usage
+
+### Endpoint
+
+```
+POST /predict
+```
+
+### Input JSON:
+
+```json
+{
+  "location": "Pune",
+  "latitude": 18.52,
+  "longitude": 73.85
+}
+```
+
+### Response:
+
+```json
+{
+  "location": "Pune",
+  "prediction_wm2": 302.17,
+  "predicted_for": "2025-08-02 14:00:00"
+}
+```
+
+---
+
+## 🛰️ Data Source
+
+* [NASA POWER API](https://power.larc.nasa.gov/)
+* Features used:
+
+  * `ALLSKY_SFC_SW_DIFF`, `ALLSKY_SFC_SW_DNI`, `TOA_SW_DWN`
+  * `RH2M`, `QV2M`, `PS`, `WS2M`, `CLOUD_AMT`
+  * `ALLSKY_SFC_LW_DWN`, `T2M`, `ALLSKY_SFC_SW_DWN`
+
+---
+
+## 🛠 Tech Stack
+
+* **Language**: Python 3.10+
+* **Framework**: FastAPI, PyTorch
+* **Data Fetching**: NASA POWER API
+* **Model**: Transformer-based sequence model
+
+---
+
+## 📈 Sample Prediction
+
+```
+Location: Delhi
+🕒 Input: 2025-08-01 13:00 → 2025-08-02 12:00
+🔮 Predicting: 2025-08-02 13:00
+⚡ Output: 378.65 W/m²
+```
+
+---
+
+## 📄 License
+
+MIT License © 2025
+
+---
+
