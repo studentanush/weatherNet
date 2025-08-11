@@ -260,10 +260,10 @@ const HomePage = () => {
             position: 'relative',
           }}
         >
-          <a href="https://github.com/yourusername" target="_blank" rel="noopener noreferrer">
+          <a href="https://github.com/studentanush/weatherNet" target="_blank" rel="noopener noreferrer">
             <FaGithub style={{ marginRight: '0.5rem' }} /> GitHub
           </a>
-          <a href="mailto:your@email.com">
+          <a href="mailto:grinssah9@gmail.com">
             <MdEmail style={{ marginRight: '0.5rem' }} /> Contact
           </a>
           <a href="https://yourwebsite.com" target="_blank" rel="noopener noreferrer">

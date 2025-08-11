@@ -1,210 +1,259 @@
-import React, { useContext } from 'react';
+// src/pages/ResultPage.jsx
+import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { ThemeContext } from '../Content/ThemeContent';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import Globe from '../components/globe';
 import BackgroundStars from '../components/BackgroundStars';
-import { FaSun, FaWind, FaCloud, FaTemperatureHigh } from 'react-icons/fa';
+import { FaSun, FaWind, FaCloud, FaTemperatureHigh, FaBolt } from 'react-icons/fa';
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine
 } from 'recharts';
 
-const ResultPage = () => {
+// CLIENT / BACKEND settings
+const API_BASE = "http://127.0.0.1:8000"; // optional backend for prediction
+// IMPORTANT: ensure you have src/lib/weatherbitClient.js exporting buildWeatherStateClient
+import { buildWeatherStateClient } from '../components/weather';
+
+const StatCard = ({ icon, title, value, hint }) => (
+  <div className="bg-white/80 dark:bg-slate-900 border border-orange-400 rounded-2xl p-5 flex flex-col items-start gap-2 shadow-md">
+    <div className="flex items-center gap-3">
+      <div className="text-orange-500 text-2xl">{icon}</div>
+      <div>
+        <div className="text-sm font-medium text-slate-700 dark:text-slate-300">{title}</div>
+        <div className="text-xl font-semibold text-slate-900 dark:text-white">{value}</div>
+      </div>
+    </div>
+    {hint && <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">{hint}</div>}
+  </div>
+);
+
+const MiniLoader = () => <div className="animate-pulse bg-gray-200 dark:bg-slate-700 h-6 w-24 rounded" />;
+
+export default function ResultPage() {
   const { theme } = useContext(ThemeContext);
   const { state } = useLocation();
+  const [searchParams] = useSearchParams();
 
-  if (!state || !state.weatherData || !state.location) {
-    return <div style={{ padding: '2rem' }}>No prediction data found.</div>;
-  }
+  const locationLat = state?.location?.lat ?? parseFloat(searchParams.get('lat')) ?? null;
+  const locationLon = state?.location?.lon ?? parseFloat(searchParams.get('lon')) ?? null;
 
-  const { weatherData, location } = state;
-  const current = weatherData.current_weather;
-  const hourly = weatherData.hourly || {};
-  const daily = weatherData.daily || {};
+  // local states
+  const [loading, setLoading] = useState(false);            // prediction loading
+  const [loadingWeather, setLoadingWeather] = useState(false); // building weather state
+  const [prediction, setPrediction] = useState(null);       // backend prediction (optional)
+  const [last7hoursData, setLast7hoursData] = useState([]); // array for chart
+  const [rawDebug, setRawDebug] = useState({ predict: null, last7: null, weatherState: null });
+  const [error, setError] = useState('');
+  const [weatherStateLocal, setWeatherStateLocal] = useState(state?.weatherData ?? null); // main weatherData
 
-  const chartData = (hourly.time || []).slice(0, 12).map((t, i) => ({
-    time: new Date(t).getHours() + ':00',
-    radiation: hourly.direct_radiation?.[i],
-    temperature: hourly.temperature_2m?.[i],
-  }));
+  // chart data derived from last7hoursData
+  const chart7h = useMemo(() => {
+    if (!last7hoursData?.length) return [];
+    return last7hoursData.map((r) => {
+      const tsStr = r.timestamp_ist || r.timestamp || r.time || r.timestamp_utc;
+      const dt = tsStr ? new Date(tsStr.replace(' ', 'T')) : new Date();
+      const label = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return { time: label, ghi: Number(r.ghi_wm2 ?? r.ALLSKY_SFC_SW_DWN ?? 0) };
+    });
+  }, [last7hoursData]);
 
-  const forecastData = (daily.time || []).map((date, idx) => ({
-    date: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
-    temp: daily.temperature_2m_max?.[idx],
-    cloudcover: daily.cloudcover?.[idx],
-    radiation: daily.shortwave_radiation_sum?.[idx],
-  }));
+  // build weatherState client-side if not provided via navigation state
+  useEffect(() => {
+    let cancelled = false;
+    async function buildWeather() {
+      if (weatherStateLocal || locationLat == null || locationLon == null) return;
+      setError('');
+      setLoadingWeather(true);
+      try {
+        // fetch 7 days (168 hours) by default — change if you want fewer
+        const ws = await buildWeatherStateClient(locationLat, locationLon, 168);
+        if (cancelled) return;
+        setWeatherStateLocal(ws);
+        setRawDebug((s) => ({ ...s, weatherState: { status: 'ok', sampleCount: ws.hourly?.time?.length ?? 0 } }));
+      } catch (err) {
+        console.error('buildWeatherStateClient error:', err);
+        if (!cancelled) setError(err.message || 'Failed to build weather state (client)');
+        setRawDebug((s) => ({ ...s, weatherState: { status: 'error', message: err.message } }));
+      } finally {
+        if (!cancelled) setLoadingWeather(false);
+      }
+    }
+    buildWeather();
+    return () => { cancelled = true; };
+  }, [locationLat, locationLon, weatherStateLocal]);
 
-  const mlPredictions = [
-    { label: 'Predicted Solar Output', value: '5.2 kWh/m²' },
-    { label: 'Expected Temp Peak', value: '32°C' },
-    { label: 'Cloud Probability', value: `${hourly.cloudcover?.[0] ?? 'N/A'}%` },
-  ];
+  // populate last7hoursData from weatherStateLocal.hourly (no backend)
+  useEffect(() => {
+    if (!weatherStateLocal?.hourly) return;
+    const hourly = weatherStateLocal.hourly;
+    const n = hourly.time?.length ?? 0;
+    const start = Math.max(0, n - 7);
+    const arr = [];
+    for (let i = start; i < n; i++) {
+      arr.push({
+        timestamp_ist: hourly.time[i],
+        ghi_wm2: hourly.ALLSKY_SFC_SW_DWN?.[i] ?? hourly.ghi?.[i] ?? hourly.GHI?.[i] ?? 0
+      });
+    }
+    setLast7hoursData(arr);
+    setRawDebug((s) => ({ ...s, last7: { from: 'weatherState', count: arr.length } }));
+  }, [weatherStateLocal]);
+
+  // attempt backend prediction AFTER weatherState is available.
+  // This call is optional — if you don't have backend, it will fail gracefully.
+  useEffect(() => {
+    if (!weatherStateLocal || locationLat == null || locationLon == null) return;
+    let cancelled = false;
+    async function callPredict() {
+      setLoading(true);
+      setPrediction(null);
+      try {
+        const url = `${API_BASE}/predict_current?lat=${locationLat}&lon=${locationLon}`;
+        const res = await fetch(url);
+        const json = await res.json().catch(() => ({ rawText: 'invalid json' }));
+        setRawDebug((s) => ({ ...s, predict: { status: res.status, body: json } }));
+        if (!res.ok) {
+          // backend not present or returned an error — don't treat as fatal
+          console.warn('predict_current returned non-ok', res.status, json);
+          return;
+        }
+        if (!cancelled) setPrediction(json);
+      } catch (err) {
+        console.warn('predict_current call failed (optional):', err);
+        setRawDebug((s) => ({ ...s, predict: { status: 'error', message: err.message } }));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    callPredict();
+    return () => { cancelled = true; };
+  }, [weatherStateLocal, locationLat, locationLon]);
+
+  const prettyPred = (p) => {
+    if (!p) return '—';
+    const n = Number(p.predicted_next_hour_wm2 ?? p.prediction ?? p.prediction_wm2 ?? NaN);
+    return Number.isFinite(n) ? `${n.toFixed(1)} W/m²` : '—';
+  };
+
+  // for header: prefer predicted timestamp, then weatherState current time, otherwise local IST now
+  const displayTime = (prediction?.timestamp_predicted_ist)
+    || (weatherStateLocal?.current_weather?.time)
+    || new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
   return (
-    <div
-      style={{
-        backgroundColor: theme === 'dark' ? '#000000' : '#f4f6ff',
-        color: theme === 'dark' ? '#f1f5f9' : '#1e293b',
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        overflowX: 'hidden',
-        padding: '2rem',
-        position: 'relative',
-        transition: 'all 0.5s ease-in-out',
-      }}
-    >
-      {/* ⭐️ Background Stars */}
-      {theme === 'light' ? (
-        <BackgroundStars count={60} color="rgba(255, 179, 0, 0.4)" />
-      ) : (
-        <BackgroundStars count={60} color="rgba(255, 255, 255, 0.3)" />
-      )}
+    <div className={`pt-[80px] min-h-screen ${theme === 'dark' ? 'bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-900'} relative`}>
+      {theme === 'light' ? <BackgroundStars count={40} color="rgba(255,179,0,0.18)" /> : <BackgroundStars count={40} color="rgba(255,255,255,0.06)" />}
 
-      <style>{`
-        .section-title {
-          font-size: 1.5rem;
-          margin-bottom: 1rem;
-          font-weight: 600;
-          font-family: Trebuchet MS, sans-serif;
-        }
-        .grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-          gap: 1.5rem;
-        }
-        .card {
-          font-family: Trebuchet MS, sans-serif;
-          background: ${theme === 'dark' ? '#000000' : '#ffffff'};
-          border: 2px solid orange;
-          border-radius: 16px;
-          padding: 1.5rem;
-          box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-        }
-        .card:hover {
-          transform: scale(1.02);
-          box-shadow: 0 0 30px rgba(255, 165, 0, 0.4);
-          border-color: darkorange;
-        }
-        .card.no-hover-scale:hover {
-          transform: none;
-          box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-          border-color: orange;
-        }
-        .forecast-day {
-          text-align: center;
-          padding: 0.75rem;
-          background: ${theme === 'dark' ? '#334155' : '#e2e8f0'};
-          border-radius: 12px;
-        }
-        .forecast-grid {
-          display: flex;
-          gap: 1rem;
-          overflow-x: auto;
-          margin-top: 1rem;
-        }
-        .forecast-card {
-          background: ${theme === 'dark' ? '#1e293b' : '#f3f4f6'};
-          padding: 1rem;
-          border-radius: 0.75rem;
-          min-width: 120px;
-          text-align: center;
-        }
-        .dashboard-layout {
-          display: grid;
-          grid-template-columns: 2fr 1fr;
-          gap: 2rem;
-        }
-        .chart-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 2rem;
-        }
-        .globe-container {
-          width: 100%;
-          height: 200px;
-          max-width: 100%;
-          overflow: hidden;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        }
-        .globe-container canvas {
-          max-width: 100%;
-          height: auto;
-        }
-      `}</style>
-
-      <header style={{ textAlign: 'center', marginBottom: '2rem' }}>
-        <h1>Solar & Weather Dashboard</h1>
-        <p>
-          Location: {location.lat}, {location.lon} | Time:{' '}
-          {new Date(current.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </p>
-      </header>
-
-      <div className="dashboard-layout">
-        <div>
-          <div className="grid">
-            <div className="card"><FaTemperatureHigh size={28} /><h3>Current Temperature</h3><p>{current.temperature}°C</p></div>
-            <div className="card"><FaWind size={28} /><h3>Wind Speed</h3><p>{current.windspeed} km/h</p></div>
-            <div className="card"><FaCloud size={28} /><h3>Cloud Cover</h3><p>{hourly.cloudcover?.[0] ?? 'N/A'}%</p></div>
-            <div className="card"><FaSun size={28} /><h3>Diffuse Radiation</h3><p>{hourly.diffuse_radiation?.[0] ?? 'N/A'} W/m²</p></div>
-            <div className="card"><FaSun size={28} /><h3>Direct Normal Irradiance</h3><p>{hourly.direct_normal_irradiance?.[0] ?? 'N/A'} W/m²</p></div>
-            <div className="card"><FaSun size={28} /><h3>Total Solar Irradiance</h3><p>{hourly.shortwave_radiation_instant?.[0] ?? 'N/A'} W/m²</p></div>
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-extrabold">Solar & Weather Dashboard</h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Location: {locationLat ?? '—'}, {locationLon ?? '—'} • IST: {displayTime}</p>
           </div>
-
-          <h2 className="section-title" style={{ marginTop: '3rem' }}>Charts</h2>
-          <div className="chart-grid">
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="time" /><YAxis /><Tooltip /><Line type="monotone" dataKey="radiation" stroke="#f59e0b" strokeWidth={2} /></LineChart>
-            </ResponsiveContainer>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="time" /><YAxis /><Tooltip /><Line type="monotone" dataKey="temperature" stroke="#3b82f6" strokeWidth={2} /></LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          <h2 className="section-title" style={{ marginTop: '3rem' }}>ML Predictions</h2>
-          <div className="grid">
-            {mlPredictions.map((pred, index) => (
-              <div key={index} className="card">
-                <h4>{pred.label}</h4>
-                <p>{pred.value}</p>
-              </div>
-            ))}
+          <div>
+            <button onClick={() => window.location.reload()} className="px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-semibold">Refresh</button>
           </div>
         </div>
 
-        <div className="card no-hover-scale" style={{ height: '100%', minHeight: '300px' }}>
-          <h2 className="section-title">Location Overview</h2>
-          <div className="globe-container">
-            <Globe flyToCoordinates={{ latitude: location.lat, longitude: location.lon }} />
-          </div>
-          <h2 className="section-title" style={{ marginTop: '2rem' }}>7-Day Forecast</h2>
-          <div className="forecast-grid">
-            {forecastData?.map((day, index) => (
-              <div key={index} className="forecast-card">
-                <p><strong>{day.date}</strong></p>
-                <p>🌞 {day.temp}°C</p>
-                <p>☁️ {day.cloudcover}%</p>
-                <p>🔆 {day.radiation} W/m²</p>
+        {/* error */}
+        {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">{error}</div>}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <StatCard icon={<FaBolt/>} title="ML Next Hour" value={loading ? <MiniLoader/> : prettyPred(prediction)} hint="Model prediction for next hour (IST)"/>
+              <StatCard icon={<FaSun/>} title="Last 7h Avg" value={loadingWeather ? <MiniLoader/> : `${(last7hoursData.reduce((s,r)=>s+Number(r.ghi_wm2||0),0)/Math.max(last7hoursData.length,1)).toFixed(1)} W/m²`} hint="Measured GHI average"/>
+              <StatCard icon={<FaTemperatureHigh/>} title="Now (local)" value={weatherStateLocal?.current_weather?.temperature ?? state?.weatherData?.current_weather?.temperature ?? '—'} hint="Current temp"/>
+            </div>
+
+            <div className="bg-white/90 dark:bg-slate-800 border border-orange-300 rounded-2xl p-4 shadow">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-semibold">Last 7 Hours — Measured GHI</h3>
+                <div className="text-sm text-slate-500">{loadingWeather ? 'Loading…' : `${last7hoursData.length} points`}</div>
               </div>
-            ))}
+
+              <div style={{height:280}}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chart7h}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={theme==='dark'?'#1f2937':'#e6e6e6'}/>
+                    <XAxis dataKey="time" />
+                    <YAxis domain={[0,'auto']} />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="ghi" name="Measured GHI" stroke="#f59e0b" strokeWidth={2} dot={{r:2}}/>
+                    <ReferenceLine y={0} stroke="#999" strokeDasharray="4 4" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* debug raw responses */}
+            <div className="bg-white/90 dark:bg-slate-800 border border-gray-300 rounded p-3 text-sm">
+              <div className="font-semibold mb-2">Debug — Raw API responses</div>
+              <div className="mb-2">
+                <div className="text-xs text-slate-500">weatherState (client)</div>
+                <pre className="text-xs overflow-auto max-h-40">{JSON.stringify(rawDebug.weatherState ?? (weatherStateLocal ? { sampleCount: weatherStateLocal.hourly?.time?.length } : null), null, 2)}</pre>
+              </div>
+              <div className="mb-2">
+                <div className="text-xs text-slate-500">/predict_current (backend, optional)</div>
+                <pre className="text-xs overflow-auto max-h-40">{JSON.stringify(rawDebug.predict, null, 2)}</pre>
+              </div>
+              <div>
+                <div className="text-xs text-slate-500">last7 (derived)</div>
+                <pre className="text-xs overflow-auto max-h-40">{JSON.stringify(last7hoursData, null, 2)}</pre>
+              </div>
+            </div>
           </div>
+
+          <aside className="space-y-6">
+            <div className="bg-white/95 dark:bg-slate-800 border border-orange-300 rounded-2xl p-4 shadow">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-semibold">Location Overview</h3>
+                <div className="text-sm text-slate-500">IST</div>
+              </div>
+              <div className="h-56 rounded-lg overflow-hidden mb-3 bg-slate-100 dark:bg-slate-900">
+                <Globe flyToCoordinates={locationLat!=null && locationLon!=null?{latitude:locationLat, longitude:locationLon}:null}/>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="text-sm text-slate-600 dark:text-slate-300">Latitude</div>
+                <div className="font-semibold">{locationLat ?? '—'}</div>
+                <div className="text-sm text-slate-600 dark:text-slate-300">Longitude</div>
+                <div className="font-semibold">{locationLon ?? '—'}</div>
+              </div>
+            </div>
+
+            <div className="bg-white/95 dark:bg-slate-800 border border-orange-300 rounded-2xl p-4 shadow">
+              <h3 className="text-lg font-semibold mb-3">Quick History (last 7)</h3>
+{ (weatherStateLocal ?? state?.weatherData)?.daily ? (
+  <div className="flex gap-2 overflow-x-auto">
+    {(weatherStateLocal ?? state?.weatherData)
+      .daily.time.slice(0, 7)
+      .reverse()
+      .map((t, i) => (
+        <div
+          key={i}
+          className="min-w-[110px] p-3 bg-slate-50 dark:bg-slate-700 rounded-lg text-center"
+        >
+          <div className="text-sm text-slate-500">
+            {new Date(t).toLocaleDateString('en-US', { weekday: 'short' })}
+          </div>
+          <div className="font-semibold mt-1">
+            {(weatherStateLocal ?? state?.weatherData).daily.temperature_2m_max?.slice(0, 7).reverse()[i] ?? '—'}°C
+          </div>
+          <div className="text-xs text-slate-500 mt-1">
+            {(weatherStateLocal ?? state?.weatherData).daily.shortwave_radiation_sum?.slice(0, 7).reverse()[i] ?? '—'} W/m²
+          </div>
+        </div>
+      ))}
+  </div>
+) : (
+  <div className="text-sm text-slate-500">No forecast available in state.</div>
+)}
+
+            </div>
+          </aside>
         </div>
       </div>
     </div>
   );
-};
-
-export default ResultPage;
+}

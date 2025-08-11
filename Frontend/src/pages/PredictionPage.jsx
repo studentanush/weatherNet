@@ -40,7 +40,7 @@ const handleGetWeather = async () => {
 
   try {
     const response = await fetch(
-      `http://127.0.0.1:8000/predict?lat=${parsedLatitude}&lon=${parsedLongitude}`
+      `http://127.0.0.1:8000/predict_current?lat=${parsedLatitude}&lon=${parsedLongitude}`
     );
 
     if (!response.ok) {
@@ -52,7 +52,13 @@ const handleGetWeather = async () => {
     if (data.error) {
       setErrorMessage(data.error);
     } else {
-      setPrediction(`Prediction for [${parsedLatitude}, ${parsedLongitude}]: ${data.prediction_wm2} W/m²`);
+      // instead of setting state locally, redirect to ResultPage
+      navigate(`/result?lat=${parsedLatitude}&lon=${parsedLongitude}`, {
+        state: {
+          location: { lat: parsedLatitude, lon: parsedLongitude },
+          predictionData: data
+        }
+      });
     }
   } catch (error) {
     setErrorMessage(error.message || 'Something went wrong.');
@@ -114,7 +120,6 @@ const handleGetWeather = async () => {
           <Globe flyToCoordinates={flyToLocation} />
         </div>
       </div>
-
       <div className="sidebar">
         <div className="form-wrapper">
           <h2 className="title">Enter Location</h2>
