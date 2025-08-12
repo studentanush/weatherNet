@@ -8,7 +8,7 @@ import { FaSun, FaWind, FaCloud, FaTemperatureHigh, FaBolt } from 'react-icons/f
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine
 } from 'recharts';
-
+import Chat from "../components/chatFeature"
 // CLIENT / BACKEND settings
 const API_BASE = "http://127.0.0.1:8000"; // optional backend for prediction
 import { buildWeatherStateClient } from '../components/weather';
@@ -57,10 +57,13 @@ export default function ResultPage() {
     return last7hoursData.map((r) => {
       const tsStr = r.timestamp_ist || r.timestamp || r.time || r.timestamp_utc;
       const dt = tsStr ? new Date(tsStr.replace(' ', 'T')) : new Date();
+      // Add 5 hours 30 minutes offset for IST
+      dt.setMinutes(dt.getMinutes() + 330);
       const label = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       return { time: label, ghi: Number(r.ghi_wm2 ?? r.ALLSKY_SFC_SW_DWN ?? 0) };
     });
   }, [last7hoursData]);
+
 
   // build weatherState client-side if not provided via navigation state
   useEffect(() => {
@@ -161,7 +164,7 @@ export default function ResultPage() {
     || new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
   return (
-    <div className={`pt-[80px] min-h-screen ${theme === 'dark' ? 'bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-900'} relative`}>
+    <div className={`pt-[80px] min-h-screen ${theme === 'dark' ? 'bg-black text-slate-100' : 'bg-slate-50 text-slate-900'} relative`}>
       {theme === 'light' ? <BackgroundStars count={40} color="rgba(255,179,0,0.18)" /> : <BackgroundStars count={40} color="rgba(255,255,255,0.06)" />}
 
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -255,8 +258,21 @@ export default function ResultPage() {
               area={Number(panelArea)}
               efficiency={Number(efficiency)}
               predictedEnergy={predictedEnergyKwh}
+              avg_7={data}
             />
-
+            <div className="mt-6">
+<div className="mt-6">
+        <Chat
+          lat={locationLat}
+          lon={locationLon}
+          predictionData={prediction}
+          area={Number(panelArea)}
+          efficiency={Number(efficiency)}
+          avg_7={data}
+          time={displayTime}
+        />
+      </div>
+</div>
           </div>
 
           <aside className="space-y-6">

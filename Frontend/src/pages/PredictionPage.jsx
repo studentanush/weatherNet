@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import Globe from '../components/globe';
 import BackgroundStars from '../components/BackgroundStars';
 import { ThemeContext } from '../Content/ThemeContent';
@@ -16,57 +16,73 @@ const PredictionPage = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
 
-const handleGetWeather = async () => {
-  setErrorMessage('');
-  setIsLoading(true);
-  setProgressMessages([]);
-  setPrediction(null);
-
-  const parsedLongitude = parseFloat(longitude);
-  const parsedLatitude = parseFloat(latitude);
-
-  if (isNaN(parsedLongitude) || parsedLongitude < -180 || parsedLongitude > 180) {
-    setErrorMessage('Please enter a valid longitude between -180 and 180.');
-    setIsLoading(false);
-    return;
-  }
-  if (isNaN(parsedLatitude) || parsedLatitude < -90 || parsedLatitude > 90) {
-    setErrorMessage('Please enter a valid latitude between -90 and 90.');
-    setIsLoading(false);
-    return;
-  }
-
-  setProgressMessages(['Fetching real-time weather data...']);
-
-  try {
-    const response = await fetch(
-      `http://127.0.0.1:8000/predict_current?lat=${parsedLatitude}&lon=${parsedLongitude}`
-    );
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch prediction');
-    }
-
-    const data = await response.json();
-
-    if (data.error) {
-      setErrorMessage(data.error);
-    } else {
-      // instead of setting state locally, redirect to ResultPage
-      navigate(`/result?lat=${parsedLatitude}&lon=${parsedLongitude}`, {
-        state: {
-          location: { lat: parsedLatitude, lon: parsedLongitude },
-          predictionData: data
+  // Auto-detect location on load
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude.toFixed(6);
+          const lon = pos.coords.longitude.toFixed(6);
+          setLatitude(lat);
+          setLongitude(lon);
+          setFlyToLocation({ latitude: parseFloat(lat), longitude: parseFloat(lon) });
+        },
+        (err) => {
+          console.warn("Location access denied or unavailable.", err);
         }
-      });
+      );
     }
-  } catch (error) {
-    setErrorMessage(error.message || 'Something went wrong.');
-  } finally {
-    setIsLoading(false);
-  }
-};
+  }, []);
 
+  const handleGetWeather = async () => {
+    setErrorMessage('');
+    setIsLoading(true);
+    setProgressMessages([]);
+    setPrediction(null);
+
+    const parsedLongitude = parseFloat(longitude);
+    const parsedLatitude = parseFloat(latitude);
+
+    if (isNaN(parsedLongitude) || parsedLongitude < -180 || parsedLongitude > 180) {
+      setErrorMessage('Please enter a valid longitude between -180 and 180.');
+      setIsLoading(false);
+      return;
+    }
+    if (isNaN(parsedLatitude) || parsedLatitude < -90 || parsedLatitude > 90) {
+      setErrorMessage('Please enter a valid latitude between -90 and 90.');
+      setIsLoading(false);
+      return;
+    }
+
+    setProgressMessages(['Fetching real-time weather data...']);
+
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:8000/predict_current?lat=${parsedLatitude}&lon=${parsedLongitude}`
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch prediction');
+      }
+
+      const data = await response.json();
+
+      if (data.error) {
+        setErrorMessage(data.error);
+      } else {
+        navigate(`/result?lat=${parsedLatitude}&lon=${parsedLongitude}`, {
+          state: {
+            location: { lat: parsedLatitude, lon: parsedLongitude },
+            predictionData: data
+          }
+        });
+      }
+    } catch (error) {
+      setErrorMessage(error.message || 'Something went wrong.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleFlyTo = () => {
     setErrorMessage('');
@@ -89,6 +105,26 @@ const handleGetWeather = async () => {
       latitude: parsedLatitude,
       name: `Lon: ${parsedLongitude.toFixed(2)}, Lat: ${parsedLatitude.toFixed(2)}`
     });
+  };
+
+  const handleUseMyLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude.toFixed(6);
+          const lon = pos.coords.longitude.toFixed(6);
+          setLatitude(lat);
+          setLongitude(lon);
+          setFlyToLocation({ latitude: parseFloat(lat), longitude: parseFloat(lon) });
+        },
+        (err) => {
+          setErrorMessage('Unable to retrieve your location.');
+          console.error(err);
+        }
+      );
+    } else {
+      setErrorMessage('Geolocation is not supported by your browser.');
+    }
   };
 
   const handleClearPrediction = () => {
@@ -164,6 +200,22 @@ const handleGetWeather = async () => {
             </button>
             <button onClick={handleFlyTo}>Fly to Globe</button>
           </div>
+
+          <button 
+            onClick={handleUseMyLocation} 
+            style={{
+              marginTop: "10px",
+              backgroundColor: "#059669",
+              color: "white",
+              fontWeight: "bold",
+              padding: "0.75rem",
+              borderRadius: "0.5rem",
+              width: "100%",
+              cursor: "pointer"
+            }}
+          >
+            📍 Use My Location
+          </button>
 
           {progressMessages.length > 0 && (
             <div className="progress-box">

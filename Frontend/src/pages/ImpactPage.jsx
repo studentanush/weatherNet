@@ -108,7 +108,7 @@ Produce a JSON object with these exact keys:
   "householdAppliancesPowered": integer,   // # of 3.5 kWh appliance-days
   "confidence": number,                    // 0.0-1.0 (1 decimal)
   "description": string,                   // short friendly message <= 40 chars
-  "suggestion": string,                    // a small suggestion based on the data you have received
+  "suggestion": string,                    // Give a clear, friendly, and slightly longer recommendation (20–40 words) for how the user can improve solar performance or utilize energy better based on the predicted energy and recent solar output data. Avoid generic text — make it location & data relevant.
   "calculation_explanation": string        // one-sentence explanation
 }
 
@@ -129,7 +129,7 @@ Example (exact formatting):
   "householdAppliancesPowered": 3,
   "confidence": 0.8,
   "description": "You powered a cleaner tomorrow",
-  "suggestion": "Consider adding 2 m² more to run more loads",
+  "suggestion": "Based on the recent 7-hour solar output, adding 2 m² more to your panel area could let you power an extra appliance daily or charge a small EV battery without tapping into the grid."
   "calculation_explanation": "Converted predicted energy to CO2 using 0.7 kgCO2/kWh and appliance/bulb energy assumptions."
 }
 `;
