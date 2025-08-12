@@ -94,7 +94,7 @@ Provide numbers only, and a short explanation.
 `;
 
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateText?key=AIzaSyAhh3AV0HWEB_RjvhfGIUZXsVBfdq5gGHo`, // <-- Replace here
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateText?key=`, // <-- Replace here
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
