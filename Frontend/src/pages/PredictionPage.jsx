@@ -67,18 +67,7 @@ const PredictionPage = ({setUser}) => {
     } finally {
       setIsLoading(false);
     }
-<<<<<<< HEAD
-  } catch (error) {
-    setErrorMessage(error.message || 'Something went wrong.');
-  } finally {
-    setIsLoading(false);
-  }
-  
-};
-
-=======
   };
->>>>>>> 597d29c70ffa3c8070a9eedfdf867d2335ddc9ec
 
   const handleFlyTo = () => {
     setErrorMessage('');
