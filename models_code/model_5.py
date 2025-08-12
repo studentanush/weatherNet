@@ -23,12 +23,12 @@ class SpikeAwareHybrid(nn.Module):
         )
 
     def forward(self, x):
-        x_t = x.transpose(1, 2) 
-        f1 = self.relu(self.cnn_small(x_t))
-        f2 = self.relu(self.cnn_med(x_t))
-        f3 = self.relu(self.cnn_dil(x_t))
-        x_cnn = torch.cat([f1, f2, f3], dim=1)
-        x_cnn = self.bn(x_cnn).transpose(1, 2)  # [batch, seq, channels]
+        x_t = x.transpose(1, 2) # 24,14 => 14,24
+        f1 = self.relu(self.cnn_small(x_t)) # CNN short time
+        f2 = self.relu(self.cnn_med(x_t))   # CNN large
+        f3 = self.relu(self.cnn_dil(x_t))   # super large
+        x_cnn = torch.cat([f1, f2, f3], dim=1) # y axis 
+        x_cnn = self.bn(x_cnn).transpose(1, 2)  # [batch, seq, channels] 
 
         # LSTM + Attention
         lstm_out, _ = self.lstm(x_cnn)

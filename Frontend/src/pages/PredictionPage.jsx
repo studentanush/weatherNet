@@ -4,7 +4,7 @@ import BackgroundStars from '../components/BackgroundStars';
 import { ThemeContext } from '../Content/ThemeContent';
 import { useNavigate } from 'react-router-dom';
 
-const PredictionPage = ({setUser}) => {
+const PredictionPage = () => {
   const { theme } = useContext(ThemeContext);
   const [longitude, setLongitude] = useState('');
   const [latitude, setLatitude] = useState('');
@@ -16,58 +16,57 @@ const PredictionPage = ({setUser}) => {
   const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
 
-  const handleGetWeather = async () => {
-    setErrorMessage('');
-    setIsLoading(true);
-    setProgressMessages([]);
-    setPrediction(null);
+const handleGetWeather = async () => {
+  setErrorMessage('');
+  setIsLoading(true);
+  setProgressMessages([]);
+  setPrediction(null);
 
-    const parsedLongitude = parseFloat(longitude);
-    const parsedLatitude = parseFloat(latitude);
+  const parsedLongitude = parseFloat(longitude);
+  const parsedLatitude = parseFloat(latitude);
 
-    if (isNaN(parsedLongitude) || parsedLongitude < -180 || parsedLongitude > 180) {
-      setErrorMessage('Please enter a valid longitude between -180 and 180.');
-      setIsLoading(false);
-      return;
+  if (isNaN(parsedLongitude) || parsedLongitude < -180 || parsedLongitude > 180) {
+    setErrorMessage('Please enter a valid longitude between -180 and 180.');
+    setIsLoading(false);
+    return;
+  }
+  if (isNaN(parsedLatitude) || parsedLatitude < -90 || parsedLatitude > 90) {
+    setErrorMessage('Please enter a valid latitude between -90 and 90.');
+    setIsLoading(false);
+    return;
+  }
+
+  setProgressMessages(['Fetching real-time weather data...']);
+
+  try {
+    const response = await fetch(
+      `http://127.0.0.1:8000/predict_current?lat=${parsedLatitude}&lon=${parsedLongitude}`
+    );
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch prediction');
     }
-    if (isNaN(parsedLatitude) || parsedLatitude < -90 || parsedLatitude > 90) {
-      setErrorMessage('Please enter a valid latitude between -90 and 90.');
-      setIsLoading(false);
-      return;
-    }
 
-    setProgressMessages(['Fetching real-time weather data...']);
+    const data = await response.json();
 
-    try {
-      const response = await fetch(
-        `http://127.0.0.1:8000/predict_current?lat=${parsedLatitude}&lon=${parsedLongitude}`
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch prediction');
-      }
-
-      const data = await response.json();
-
+    if (data.error) {
+      setErrorMessage(data.error);
+    } else {
+      // instead of setting state locally, redirect to ResultPage
       navigate(`/result?lat=${parsedLatitude}&lon=${parsedLongitude}`, {
         state: {
           location: { lat: parsedLatitude, lon: parsedLongitude },
           predictionData: data
         }
       });
-
-    } catch (error) {
-      // ✅ Fallback navigation with dummy data if API fails
-      navigate(`/result?lat=${parsedLatitude}&lon=${parsedLongitude}`, {
-        state: {
-          location: { lat: parsedLatitude, lon: parsedLongitude },
-          predictionData: { message: 'No live data, offline mode' }
-        }
-      });
-    } finally {
-      setIsLoading(false);
     }
-  };
+  } catch (error) {
+    setErrorMessage(error.message || 'Something went wrong.');
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   const handleFlyTo = () => {
     setErrorMessage('');
