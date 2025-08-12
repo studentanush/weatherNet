@@ -4,7 +4,7 @@ import BackgroundStars from '../components/BackgroundStars';
 import { ThemeContext } from '../Content/ThemeContent';
 import { useNavigate } from 'react-router-dom';
 
-const PredictionPage = () => {
+const PredictionPage = ({setUser}) => {
   const { theme } = useContext(ThemeContext);
   const [longitude, setLongitude] = useState('');
   const [latitude, setLatitude] = useState('');
@@ -59,6 +59,7 @@ const handleGetWeather = async () => {
   } finally {
     setIsLoading(false);
   }
+  
 };
 
 

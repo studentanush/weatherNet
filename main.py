@@ -1,48 +1,142 @@
-from fastapi import FastAPI, Query
-from pydantic import BaseModel
-from final_fetch import fetch_weatherbit_data
-from models_code.model import TimeSeriesTransformer
-from fastapi.middleware.cors import CORSMiddleware
-import joblib
+# main.py
+import os
+import sys
 import torch
+import joblib
 import numpy as np
+import pandas as pd
+from datetime import datetime, timedelta, timezone
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
+import requests
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Replace "*" with ["http://localhost:3000"] for specific frontend
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+from models_code.model_5 import SpikeAwareHybrid
+from final.final_fetch import compute_additional_features, add_time_features
 
-MODEL_PATH = "models/version2.pth"
-SCALER_PATH = "scalers/feature_scaler.pkl"
+# ==== CONFIG ====
+MODEL_PATH = "models/spike_aware_q95_seq24.pth40"
+SCALER_PATH = "scalers/feature_scaler_seq24.pkl"
 SEQ_LEN = 24
+API_KEY = "777628119ce049d484833355dbeca175"
+API_URL = "https://api.weatherbit.io/v2.0/history/hourly"
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
 FEATURES = [
     "ALLSKY_SFC_SW_DIFF", "ALLSKY_SFC_SW_DNI", "TOA_SW_DWN",
     "RH2M", "QV2M", "PS", "WS2M", "CLOUD_AMT",
     "ALLSKY_SFC_LW_DWN", "T2M", "hour_sin", "hour_cos", "month_sin", "month_cos"
 ]
+TARGET = "ALLSKY_SFC_SW_DWN"
+
+app = FastAPI(title="Solar Prediction API", version="1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Change in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 scaler = joblib.load(SCALER_PATH)
-model = TimeSeriesTransformer(input_size=len(FEATURES))
-model.load_state_dict(torch.load(MODEL_PATH, map_location='cpu'))
+model = SpikeAwareHybrid(input_size=len(FEATURES)).to(DEVICE)
+model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
 model.eval()
+
+
+def fetch_weather_data_range(lat, lon, start_time, end_time):
+    """
+    Fetch hourly weather data between start_time and end_time in IST.
+    """
+    params = {
+        "lat": lat,
+        "lon": lon,
+        "key": API_KEY,
+        "start_date": start_time.strftime("%Y-%m-%d:%H"),
+        "end_date": end_time.strftime("%Y-%m-%d:%H")
+    }
+    r = requests.get(API_URL, params=params)
+    r.raise_for_status()
+    data = r.json()['data']
+
+    df = pd.DataFrame(data)
+    df['timestamp_utc'] = pd.to_datetime(df['timestamp_utc'], utc=True)
+    df.set_index('timestamp_utc', inplace=True)
+    # Convert to IST
+    df.index = df.index.tz_convert('Asia/Kolkata')
+    df = add_time_features(df)
+    df = compute_additional_features(df, lat)
+    return df
 
 def prepare_input(df):
     df = df[FEATURES]
     df_scaled = scaler.transform(df)
-    tensor = torch.tensor(df_scaled[-SEQ_LEN:], dtype=torch.float32).unsqueeze(0)
-    return tensor
+    return torch.tensor(df_scaled, dtype=torch.float32, device=DEVICE)
 
-@app.get("/predict")
-def predict(lat: float = Query(...), lon: float = Query(...)):
+# ==== Endpoints ====
+@app.get("/")
+def root():
+    return {"message": "Solar Prediction API is running"}
+
+@app.get("/predict_current")
+def predict_current(lat: float = Query(...), lon: float = Query(...)):
+    """
+    Predict next hour's solar radiation using last 24 hours of data.
+    """
     try:
-        df = fetch_weatherbit_data(lat, lon, "777628119ce049d484833355dbeca175")
-        input_tensor = prepare_input(df)
+        # IST now → convert to UTC for API call
+        ist_now = datetime.now(tz=timezone(timedelta(hours=5, minutes=30)))
+        end_time = ist_now 
+        start_time = end_time - timedelta(hours=24)
+
+        # Convert to UTC for API call
+        end_time_utc = end_time.astimezone(timezone.utc)
+        start_time_utc = start_time.astimezone(timezone.utc)
+
+        df = fetch_weather_data_range(lat, lon, start_time_utc, end_time_utc)
+
+        if len(df) < SEQ_LEN:
+            return {"error": f"Not enough data ({len(df)} rows) for sequence length {SEQ_LEN}"}
+
+        tensor_input = prepare_input(df)[-SEQ_LEN:].unsqueeze(0)
+
         with torch.no_grad():
-            prediction = model(input_tensor).item()
-        return {"prediction_wm2": round(prediction, 2)}
+            pred_log = model(tensor_input).item()
+
+        pred_wm2 = np.expm1(pred_log)
+        return {
+            "latitude": lat,
+            "longitude": lon,
+            "timestamp_predicted_ist": (ist_now + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S"),
+            "predicted_next_hour_wm2": round(pred_wm2, 2)
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/last_7hours_real")
+def last_7hours_real(lat: float = Query(...), lon: float = Query(...)):
+    """
+    Fetch last 7 hours real GHI (ALLSKY_SFC_SW_DWN) data in IST.
+    """
+    try:
+        ist_now = datetime.now(tz=timezone(timedelta(hours=5, minutes=30)))
+        end_time = ist_now 
+        start_time = end_time - timedelta(hours=7)
+
+        end_time_utc = end_time.astimezone(timezone.utc)
+        start_time_utc = start_time.astimezone(timezone.utc)
+
+        df = fetch_weather_data_range(lat, lon, start_time_utc, end_time_utc)
+
+        df_out = df[[TARGET]].reset_index()
+        df_out['timestamp_ist'] = df_out['timestamp_utc'].dt.strftime("%Y-%m-%d %H:%M:%S")
+        df_out.rename(columns={TARGET: "ghi_wm2"}, inplace=True)
+
+        return {
+            "latitude": lat,
+            "longitude": lon,
+            "data": df_out[['timestamp_ist', 'ghi_wm2']].to_dict(orient="records")
+        }
     except Exception as e:
         return {"error": str(e)}

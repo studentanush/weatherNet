@@ -202,7 +202,14 @@ const HomePage = () => {
         </div>
 
         <div style={{ textAlign: 'center', marginBottom: '4rem', zIndex: 10, position: 'relative' }}>
-          <h1 ref={titleRef} style={{ fontSize: '2.5rem', fontWeight: 'bold', opacity: 0 }}>
+          <h1 ref={titleRef} style={{
+            fontSize: '2.5rem',
+            fontWeight: 'bold',
+            opacity: 0,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}>
             <img src={HappySunGif} alt="Happy Sun" style={{ width: '60px', height: '60px', verticalAlign: 'middle' }} /> SolarPredict
           </h1>
         </div>

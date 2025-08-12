@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext,useState } from 'react';
 import { ThemeContext } from './Content/ThemeContent';
 import { Routes, Route } from 'react-router-dom';
 import HomePage from './pages/HomePage';
@@ -7,10 +7,11 @@ import ResultPage from './pages/ResultPage';
 import AboutPage from './pages/AboutPage';
 import Navbar from './components/Navbar';
 import BackgroundStars from './components/BackgroundStars';
+//import GoogleLogin from './pages/GoogleLogin';
 
 const App = () => {
   const { theme } = useContext(ThemeContext);
-
+  const [user, setUser] = useState(null);
   return (
     <>
       {/* 🌌 Fixed background stars, behind everything */}
@@ -18,10 +19,10 @@ const App = () => {
 
       {/* 🌐 Main UI sits above */}
       <div style={{ position: 'relative', minHeight: '100vh', overflowX: 'hidden', zIndex: 1 }}>
-        <Navbar />
+        <Navbar user = {user} setUser={setUser}  />
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/predict" element={<PredictionPage />} />
+          <Route path="/predict" element={<PredictionPage user={user} setUser={setUser} />} />
           <Route path="/result" element={<ResultPage />} />
           <Route path="/about" element={<AboutPage />} />
         </Routes>

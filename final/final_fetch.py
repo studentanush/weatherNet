@@ -44,40 +44,56 @@ def fetch_weatherbit_data(lat, lon, key):
     df = pd.DataFrame(data)
     df['timestamp_utc'] = pd.to_datetime(df['timestamp_utc'], utc=True)
     df.set_index('timestamp_utc', inplace=True)
-
+    df.index = df.index.tz_convert('Asia/Kolkata')
     df = add_time_features(df)
-    df = compute_additional_features(df)
+    df = compute_additional_features(df,lat)
     print(df.columns)
     return df
+def compute_toa(df, lat):
+    lat_rad = np.radians(lat)
+    day_of_year = df.index.dayofyear
+    decl = 23.45 * np.sin(np.radians(360 * (284 + day_of_year) / 365))
+    decl_rad = np.radians(decl)
+    hour_angle = np.radians((df.index.hour - 12) * 15)
+    solar_constant = 1367
+    cos_zenith = (np.sin(lat_rad) * np.sin(decl_rad) +
+                  np.cos(lat_rad) * np.cos(decl_rad) * np.cos(hour_angle))
+    cos_zenith = np.maximum(cos_zenith, 0)
+    df['TOA_SW_DWN'] = solar_constant * cos_zenith
+    return df
 
-def compute_additional_features(df):
+def compute_additional_features(df, lat):
     df['RH2M'] = df['rh']
-    df['PS'] = df['pres']
+    df['PS'] = df['pres'] / 10.0  # hPa → kPa
     df['T2M'] = df['temp']
     df['WS2M'] = df['wind_spd']
     df['CLOUD_AMT'] = df['clouds']
+
     df['ALLSKY_SFC_SW_DWN'] = df['ghi']
-    df['ALLSKY_SFC_SW_DNI'] = df['dni']
+    df['ALLSKY_SFC_SW_DNI'] = df['dni']  # already W/m², just note daylight gap
     df['ALLSKY_SFC_SW_DIFF'] = df['dhi']
 
+    # QV2M in g/kg
     T = df['temp']
     RH = df['rh'] / 100.0
     P = df['pres']
     es = 6.112 * np.exp((17.67 * T) / (T + 243.5))
     e = RH * es
     qv = (0.622 * e) / (P - (1 - 0.622) * e)
-    df['QV2M'] = qv
+    df['QV2M'] = qv * 1000  # g/kg
 
-    df['TOA_SW_DWN'] = df['solar_rad'].fillna(0)
+    # Compute TOA radiation from lat & timestamp
+    df = compute_toa(df, lat)
 
+    # Longwave radiation
     sigma = 5.67e-8
     temp_K = df['temp'] + 273.15
-    emissivity = 0.7 + 0.2 * (RH ** (1/7))
+    emissivity = 0.7 + 0.2 * (RH ** (1 / 7))
     df['ALLSKY_SFC_LW_DWN'] = emissivity * sigma * (temp_K ** 4)
 
     return df
 
-def evaluation_fetch(lat, lon, key):
+def evaluation_fetch(lat, lon,key ="777628119ce049d484833355dbeca175" ):
     now = datetime.now()
     today_midnight = datetime(now.year, now.month, now.day)
     yesterday_midnight = today_midnight - timedelta(days=3)

@@ -1,13 +1,50 @@
 // src/components/Navbar.jsx
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect,useState } from 'react';
 import { FiSun, FiMoon } from "react-icons/fi";
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ThemeContext } from '../Content/ThemeContent';
+//import GoogleSignInButton from '../button/GoogleSignInButton';
+import { FcGoogle } from "react-icons/fc";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import axios from "axios";
+import { auth, provider, signInWithPopup } from "../firebase";
+//import {Google}
 
-const Navbar = () => {
+
+const Navbar = ({user,setUser}) => {
   const { theme, toggleTheme } = useContext(ThemeContext);
+  
+  const auth = getAuth();
 
+  useEffect(() => {
+    // This will run once when the component mounts
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+
+    
+    return () => unsubscribe();
+  }, [auth]);
+  //const navigate = useNavigate();
+  const handleGoogleLogin = async () => {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      const { data } = await axios.post("http://localhost:5000/api/auth/google", {
+        name: user.displayName,
+        email: user.email,
+        googleId: user.uid,
+        photoURL: user.photoURL
+      });
+
+      setUser(data.user);
+      localStorage.setItem("userId", data.user._id);
+    } catch (err) {
+      console.error("Google login failed:", err);
+    }
+  };
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'light') {
@@ -60,6 +97,22 @@ const Navbar = () => {
             >
               {theme === 'light' ? <FiMoon size={24} /> : <FiSun size={24} />}
             </button>
+            {user ? (
+              <div
+                className="user-avatar"
+                
+              >
+                {user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}
+              </div>
+            ) : (
+              <button className="my-button" onClick={handleGoogleLogin}>
+                <FcGoogle size={20} />
+                Sign in
+              </button>
+            )}
+
+
+
           </div>
         </div>
       </nav>
@@ -166,6 +219,34 @@ const Navbar = () => {
         .theme-toggle-btn:hover {
           background-color: rgba(0, 0, 0, 0.05);
         }
+          .my-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px; /* space between icon and text */
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.my-button:hover {
+  background-color: #f0f0f0;
+}
+  .user-avatar {
+  width: 40px;               /* same as w-10 */
+  height: 40px;              /* same as h-10 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;        /* same as rounded-full */
+  color: white;              /* same as text-white */
+  font-weight: bold;         /* same as font-bold */
+  font-size: 16px;
+  background-color: #3b82f6;
+}
       `}</style>
     </>
   );
