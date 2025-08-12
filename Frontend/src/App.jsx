@@ -9,6 +9,8 @@ import ImpactPage from './pages/ImpactPage';
 import Navbar from './components/Navbar';
 import BackgroundStars from './components/BackgroundStars';
 //import GoogleLogin from './pages/GoogleLogin';
+import India_map from './pages/maps'
+import 'leaflet/dist/leaflet.css';
 
 const App = () => {
   const { theme } = useContext(ThemeContext);
@@ -30,6 +32,7 @@ const App = () => {
           <Route path="/result" element={<ResultPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/impact" element={<ImpactPage />} /> {/* Correct route path */}
+          <Route path="/maps" element={<India_map/>} /> {/* Correct route path */}
         </Routes>
       </div>
     </>

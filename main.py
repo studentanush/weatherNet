@@ -9,6 +9,8 @@ from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 import requests
+from pydantic import BaseModel
+from typing import List
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from models_code.model_5 import SpikeAwareHybrid
@@ -113,6 +115,64 @@ def predict_current(lat: float = Query(...), lon: float = Query(...)):
         }
     except Exception as e:
         return {"error": str(e)}
+
+class Coord(BaseModel):
+    lat: float
+    lon: float
+
+class CoordsRequest(BaseModel):
+    coords: List[Coord]
+import math
+
+def safe_float(val):
+    if val is None or math.isnan(val) or math.isinf(val):
+        return None  # or 0, depending on your needs
+    return float(val)
+@app.post("/predict")
+def predict_multiple(req: CoordsRequest):
+    """
+    Predict next hour's solar radiation for multiple locations using last 24 hours of data.
+    """
+    results = []
+    ist_now = datetime.now(tz=timezone(timedelta(hours=5, minutes=30)))
+    end_time = ist_now
+    start_time = end_time - timedelta(hours=24)
+    end_time_utc = end_time.astimezone(timezone.utc)
+    start_time_utc = start_time.astimezone(timezone.utc)
+
+    for coord in req.coords:
+        try:
+            df = fetch_weather_data_range(coord.lat, coord.lon, start_time_utc, end_time_utc)
+
+            if len(df) < SEQ_LEN:
+                results.append({
+                    "latitude": coord.lat,
+                    "longitude": coord.lon,
+                    "error": f"Not enough data ({len(df)} rows) for sequence length {SEQ_LEN}"
+                })
+                continue
+
+            tensor_input = prepare_input(df)[-SEQ_LEN:].unsqueeze(0)
+
+            with torch.no_grad():
+                pred_log = model(tensor_input).item()
+
+            pred_wm2 = np.expm1(pred_log)
+            pred_wm2 = safe_float(pred_wm2)
+            results.append({
+                "latitude": coord.lat,
+                "longitude": coord.lon,
+                "timestamp_predicted_ist": (ist_now + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S"),
+                "predicted_next_hour_wm2": round(pred_wm2, 2)
+            })
+        except Exception as e:
+            results.append({
+                "latitude": coord.lat,
+                "longitude": coord.lon,
+                "error": str(e)
+            })
+
+    return {"predictions": results}
 
 @app.get("/last_7hours_real")
 def last_7hours_real(lat: float = Query(...), lon: float = Query(...)):
