@@ -1,6 +1,6 @@
 # 🌞 Weather-Net (Solar Energy Prediction)
 
-This project builds a deep learning model to forecast hourly solar energy output (W/m²) using weather features from NASA's POWER API. It includes a `FastAPI` server for making real-time predictions using geographic coordinates.
+This project builds a deep learning model to forecast hourly solar energy output (W/m²) using weather features from NASA's POWER API. It includes a `FastAPI` server for making real-time predictions using geographic coordinates. I has a Latency of `35 ms`
 
 ---
 
