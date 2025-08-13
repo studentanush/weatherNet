@@ -162,7 +162,8 @@ Training Data:
   * `RH2M`, `QV2M`, `PS`, `WS2M`, `CLOUD_AMT`
   * `ALLSKY_SFC_LW_DWN`, `T2M`, `ALLSKY_SFC_SW_DWN`
   * Cyclic time features: `hour_sin`, `hour_cos`, `month_sin`, `month_cos`
-Prediction Data:
+
+*Prediction Data:
 *[OpenMeteo API](https://open-meteo.com/)
 *Same features used to predict the solar energy generated. However, two features:
 *1. Relative Humidity at 2m.
