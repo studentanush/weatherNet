@@ -155,20 +155,32 @@ GET /last_7hours_real
 ---
 
 ## 🛰️ Data Source
-Training Data:
-* [NASA POWER API](https://power.larc.nasa.gov/)
-* Features used:
-  * `ALLSKY_SFC_SW_DIFF`, `ALLSKY_SFC_SW_DNI`, `TOA_SW_DWN`
-  * `RH2M`, `QV2M`, `PS`, `WS2M`, `CLOUD_AMT`
-  * `ALLSKY_SFC_LW_DWN`, `T2M`, `ALLSKY_SFC_SW_DWN`
-  * Cyclic time features: `hour_sin`, `hour_cos`, `month_sin`, `month_cos`
 
-*Prediction Data:
-*[OpenMeteo API](https://open-meteo.com/)
-*Same features used to predict the solar energy generated. However, two features:
-*1. Relative Humidity at 2m.
-*2. Top of atmosphere shortwave downward radiation.
-*Were not available, thus they are calculated in the code itself.
+
+
+## Training Data
+
+- **Source:** [NASA POWER API](https://power.larc.nasa.gov/)
+- **Features used:**
+  - **Solar Radiation & Irradiance:**  
+    `ALLSKY_SFC_SW_DIFF`, `ALLSKY_SFC_SW_DNI`, `TOA_SW_DWN`, `ALLSKY_SFC_SW_DWN`, `ALLSKY_SFC_LW_DWN`
+  - **Weather Parameters:**  
+    `RH2M` (Relative Humidity at 2m), `QV2M` (Specific Humidity at 2m), `PS` (Surface Pressure), `WS2M` (Wind Speed at 2m), `CLOUD_AMT` (Cloud Amount)
+  - **Temperature:**  
+    `T2M` (Temperature at 2m)
+  - **Cyclic Time Features:**  
+    `hour_sin`, `hour_cos`, `month_sin`, `month_cos`
+
+---
+
+## Prediction Data
+
+- **Source:** [Open-Meteo API](https://open-meteo.com/)
+- **Features used:** Same as the training data.
+- **Note:** Two features not provided by the API were calculated in code:
+  1. Relative Humidity at 2m (`RH2M`)
+  2. Top of atmosphere shortwave downward radiation (`TOA_SW_DWN`)
+  
 ---
 
 ## 🛠 Tech Stack
