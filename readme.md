@@ -155,14 +155,19 @@ GET /last_7hours_real
 ---
 
 ## 🛰️ Data Source
-
+Training Data:
 * [NASA POWER API](https://power.larc.nasa.gov/)
 * Features used:
   * `ALLSKY_SFC_SW_DIFF`, `ALLSKY_SFC_SW_DNI`, `TOA_SW_DWN`
   * `RH2M`, `QV2M`, `PS`, `WS2M`, `CLOUD_AMT`
   * `ALLSKY_SFC_LW_DWN`, `T2M`, `ALLSKY_SFC_SW_DWN`
   * Cyclic time features: `hour_sin`, `hour_cos`, `month_sin`, `month_cos`
-
+Prediction Data:
+*[OpenMeteo API](https://open-meteo.com/)
+*Same features used to predict the solar energy generated. However, two features:
+*1. Relative Humidity at 2m.
+*2. Top of atmosphere shortwave downward radiation.
+*Were not available, thus they are calculated in the code itself.
 ---
 
 ## 🛠 Tech Stack
