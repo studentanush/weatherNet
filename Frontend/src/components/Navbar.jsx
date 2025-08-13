@@ -75,14 +75,14 @@ const Navbar = ({user,setUser}) => {
           {/* Navigation and Theme Toggle */}
           <div className="navbar-menu">
             <div className="navbar-links">
-              {["/", "/predict", "/about"].map((path, i) => (
+              {["/", "/predict","/maps" ,"/about"].map((path, i) => (
                 <motion.div
                   key={path}
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ type: "spring", stiffness: 100, damping: 20, delay: 0.5 + i * 0.2 }}
                 >
-                  <Link to={path} className="nav-link">
+                  <Link to={path} className="nav-link w-3">
                     {path === "/" ? "Home" : path.substring(1).charAt(0).toUpperCase() + path.slice(2)}
                     <span className="nav-link-underline"></span>
                   </Link>
