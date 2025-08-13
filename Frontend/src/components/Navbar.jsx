@@ -69,7 +69,7 @@ const Navbar = ({user,setUser}) => {
             className="navbar-logo-wrapper"
           >
             <span className="navbar-icon">☀️</span>
-            <span className="navbar-title">SolarPredict</span>
+            <span className="navbar-title">WeatherNet</span>
           </motion.div>
 
           {/* Navigation and Theme Toggle */}
