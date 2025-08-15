@@ -72,7 +72,7 @@ if __name__ == "__main__":
         "lon": lon,
         "key": API_KEY,
         "start_date": start_time.strftime("%Y-%m-%d:%H"),
-        "end_date": end_time.strftime("%Y-%m-%d:%H")
+        "end_date": end_time.strftime("%Y-%m-%d:%H"),
     }
     r = requests.get(API_URL, params=params)
     r.raise_for_status()

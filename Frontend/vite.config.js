@@ -10,4 +10,12 @@ export default defineConfig({
     tailwindcss(), 
     cesium()
   ],
+  
+    server: {
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      '3c8d1de0d7a1.ngrok-free.app' // ✅ Add your ngrok URL here
+    ]
+  }
 })
